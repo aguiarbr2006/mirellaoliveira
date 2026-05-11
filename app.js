@@ -5,9 +5,6 @@ const currency = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
-const hasSavedState = Boolean(localStorage.getItem(STORAGE_KEY));
-const state = loadState();
-
 const DEFAULT_SETTINGS = {
   companyName: "Rayssa Oliveira",
   subtitle: "Nail designer",
@@ -25,6 +22,9 @@ const DEFAULT_SETTINGS = {
 function defaultSettings() {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 }
+
+const hasSavedState = Boolean(localStorage.getItem(STORAGE_KEY));
+const state = loadState();
 
 const pages = {
   dashboard: {
