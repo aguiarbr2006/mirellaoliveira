@@ -1,43 +1,18 @@
-rules_version = '2';
+rules_version='2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    match /sistemas/{sistemaId} {
-      allow read, write: if true;
-    }
-
-    match /clientes/{clienteId} {
-      allow read, create, update, delete: if signedIn();
-    }
-
-    match /servicos/{servicoId} {
-      allow read, create, update, delete: if signedIn();
-    }
-
-    match /agendamentos/{agendamentoId} {
-      allow read: if signedIn();
-      allow create, update: if signedIn()
-        && request.resource.data.valorServico is number
-        && request.resource.data.valorServico > 0
-        && request.resource.data.valorFinal is number
-        && request.resource.data.valorFinal >= 0
-        && request.resource.data.status in ['Agendado', 'Confirmado', 'Concluído', 'Cancelado']
-        && request.resource.data.descontoTipo in ['nenhum', 'valor', 'porcentagem'];
-      allow delete: if signedIn();
-    }
-
-    match /financeiro/{financeiroId} {
-      allow read: if signedIn();
-      allow create, update: if signedIn()
-        && request.resource.data.tipo in ['entrada', 'saida']
-        && request.resource.data.origem in ['manual', 'agendamento']
-        && request.resource.data.valor is number
-        && request.resource.data.valor >= 0;
-      allow delete: if signedIn();
+    match /{document=**} {
+      // This rule allows anyone with your database reference to view, edit,
+      // and delete all data in your database. It is useful for getting
+      // started, but it is configured to expire after 30 days because it
+      // leaves your app open to attackers. At that time, all client
+      // requests to your database will be denied.
+      //
+      // Make sure to write security rules for your app before that time, or
+      // else all client requests to your database will be denied until you
+      // update your rules.
+      allow read, write: if request.time < timestamp.date(2026, 6, 10);
     }
   }
 }
