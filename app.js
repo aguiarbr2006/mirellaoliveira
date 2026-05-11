@@ -23,15 +23,6 @@ function defaultSettings() {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 }
 
-const hasSavedState = Boolean(localStorage.getItem(STORAGE_KEY));
-const state = loadState();
-
-let remoteDb = null;
-let remoteDocRef = null;
-let remoteReady = false;
-let applyingRemoteState = false;
-let pendingRemoteSave = null;
-
 const pages = {
   dashboard: {
     title: "Dashboard",
