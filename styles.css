@@ -22,6 +22,8 @@ body {
   min-height: 100vh;
   background: var(--beige);
   color: var(--ink);
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 button,
@@ -573,6 +575,10 @@ label {
   display: none;
 }
 
+.mobile-more {
+  display: none;
+}
+
 .toast {
   position: fixed;
   left: 50%;
@@ -606,8 +612,8 @@ label {
   }
 
   .main {
-    padding: 18px;
-    padding-bottom: calc(94px + env(safe-area-inset-bottom));
+    padding: 16px;
+    padding-bottom: calc(108px + env(safe-area-inset-bottom));
   }
 
   .topbar {
@@ -619,7 +625,15 @@ label {
   }
 
   .top-actions {
-    justify-content: flex-end;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .top-actions button {
+    width: 100%;
+    padding-inline: 8px;
+    white-space: normal;
   }
 
   .stats-grid,
@@ -635,6 +649,10 @@ label {
     min-width: 0;
   }
 
+  .toolbar button {
+    width: 100%;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
   }
@@ -645,7 +663,7 @@ label {
     right: 0;
     bottom: 0;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 2px;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
     background: var(--paper);
@@ -657,6 +675,47 @@ label {
     text-align: center;
     padding: 10px 3px;
     font-size: 12px;
+  }
+
+  .bottom-nav .nav-item[data-page="pacotes"],
+  .bottom-nav .nav-item[data-page="servicos"],
+  .bottom-nav .nav-item[data-page="admin"] {
+    display: none;
+  }
+
+  .mobile-more {
+    display: block;
+    position: fixed;
+    right: 12px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    z-index: 12;
+    min-height: 44px;
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+  }
+
+  .mobile-more-menu {
+    position: fixed;
+    right: 12px;
+    bottom: calc(124px + env(safe-area-inset-bottom));
+    z-index: 13;
+    display: none;
+    width: min(220px, calc(100vw - 24px));
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 8px;
+  }
+
+  .mobile-more-menu.open {
+    display: grid;
+    gap: 6px;
+  }
+
+  .mobile-more-menu .nav-item {
+    display: block;
+    text-align: left;
   }
 }
 
@@ -705,7 +764,7 @@ label {
   }
 
   .top-actions {
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 
   .top-actions button {
@@ -714,5 +773,73 @@ label {
 
   .stat-card strong {
     font-size: 22px;
+  }
+
+  .main {
+    padding: 12px;
+    padding-bottom: calc(112px + env(safe-area-inset-bottom));
+  }
+
+  .panel,
+  .stat-card,
+  .item-card,
+  .toolbar {
+    padding: 12px;
+  }
+
+  .month-calendar {
+    grid-template-columns: repeat(7, minmax(112px, 1fr));
+    gap: 8px;
+  }
+
+  .month-day {
+    min-width: 112px;
+  }
+
+  .month-day header,
+  .month-slots,
+  .month-event {
+    padding: 8px;
+  }
+
+  dialog,
+  #appointmentModal {
+    width: calc(100vw - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+
+  .modal-form {
+    max-height: calc(100dvh - 12px);
+    padding: 14px;
+  }
+
+  .modal-form footer {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .modal-form footer span {
+    display: none;
+  }
+
+  .modal-form footer button {
+    width: 100%;
+  }
+
+  .bottom-nav .nav-item {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 380px) {
+  .bottom-nav .nav-item {
+    font-size: 10px;
+    padding-inline: 1px;
+  }
+
+  .primary-button,
+  .ghost-button,
+  .danger-button {
+    padding-inline: 10px;
   }
 }

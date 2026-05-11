@@ -26,6 +26,12 @@ function defaultSettings() {
 const hasSavedState = Boolean(localStorage.getItem(STORAGE_KEY));
 const state = loadState();
 
+let remoteDb = null;
+let remoteDocRef = null;
+let remoteReady = false;
+let applyingRemoteState = false;
+let pendingRemoteSave = null;
+
 const pages = {
   dashboard: {
     title: "Dashboard",
@@ -170,6 +176,99 @@ function id() {
 
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  queueRemoteSave();
+}
+
+function serializableState() {
+  return JSON.parse(JSON.stringify({
+    settings: state.settings,
+    clientes: state.clientes,
+    servicos: state.servicos,
+    agendamentos: state.agendamentos,
+    pacotes: state.pacotes,
+    financeiro: state.financeiro,
+  }));
+}
+
+function replaceState(nextState) {
+  state.settings = nextState.settings || defaultSettings();
+  state.clientes = Array.isArray(nextState.clientes) ? nextState.clientes : [];
+  state.servicos = Array.isArray(nextState.servicos) ? nextState.servicos : [];
+  state.agendamentos = Array.isArray(nextState.agendamentos) ? nextState.agendamentos : [];
+  state.pacotes = Array.isArray(nextState.pacotes) ? nextState.pacotes : [];
+  state.financeiro = Array.isArray(nextState.financeiro) ? nextState.financeiro : [];
+  migrateState();
+}
+
+function isFirebaseConfigured() {
+  const config = window.RAYSSA_FIREBASE_CONFIG;
+  return Boolean(
+    window.firebase &&
+      config &&
+      config.apiKey &&
+      config.projectId &&
+      !String(config.apiKey).startsWith("COLE_AQUI") &&
+      !String(config.projectId).startsWith("COLE_AQUI"),
+  );
+}
+
+function initRemoteSync() {
+  if (!isFirebaseConfigured()) {
+    console.info("Firebase não configurado. Usando armazenamento local deste navegador.");
+    return;
+  }
+
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(window.RAYSSA_FIREBASE_CONFIG);
+    remoteDb = firebase.firestore();
+    remoteDocRef = remoteDb.doc(window.RAYSSA_FIREBASE_DOC_PATH || "sistemas/rayssa-oliveira");
+
+    remoteDocRef.onSnapshot(
+      (snapshot) => {
+        if (!snapshot.exists) {
+          remoteReady = true;
+          queueRemoteSave(true);
+          return;
+        }
+
+        const data = snapshot.data();
+        if (!data?.state) return;
+        applyingRemoteState = true;
+        replaceState(data.state);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        applyingRemoteState = false;
+        remoteReady = true;
+        renderAll();
+      },
+      (error) => {
+        console.error("Erro ao sincronizar Firebase:", error);
+        toast("Não foi possível sincronizar com o Firebase.");
+      },
+    );
+  } catch (error) {
+    console.error("Erro ao iniciar Firebase:", error);
+    toast("Firebase não configurado corretamente.");
+  }
+}
+
+function queueRemoteSave(force = false) {
+  if (!remoteDocRef || applyingRemoteState) return;
+  if (!remoteReady && !force) return;
+  clearTimeout(pendingRemoteSave);
+  pendingRemoteSave = setTimeout(() => {
+    remoteDocRef
+      .set(
+        {
+          state: serializableState(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      )
+      .catch((error) => {
+        console.error("Erro ao salvar no Firebase:", error);
+        toast("Não foi possível salvar online.");
+      });
+  }, force ? 0 : 450);
 }
 
 function migrateState() {
@@ -291,6 +390,7 @@ function setPage(pageName) {
   Object.entries(pages).forEach(([key, page]) => {
     page.el.classList.toggle("active", key === pageName);
   });
+  document.querySelector("#mobileMoreMenu")?.classList.remove("open");
   document.querySelector("#pageTitle").textContent = pages[pageName].title;
   document.querySelector("#pageSubtitle").textContent = pages[pageName].subtitle;
   document.querySelectorAll(".nav-item").forEach((item) => {
@@ -1287,6 +1387,9 @@ function bindButtons() {
   document.querySelector("#openFinanceModal").addEventListener("click", () => openFinance());
   document.querySelector("#openPackageModal").addEventListener("click", () => openPackage());
   document.querySelector("#currentMonth").addEventListener("click", renderMonthCalendar);
+  document.querySelector("#mobileMoreButton").addEventListener("click", () => {
+    document.querySelector("#mobileMoreMenu").classList.toggle("open");
+  });
   document.querySelector("#resetSettings").addEventListener("click", () => {
     state.settings = defaultSettings();
     save();
@@ -1478,3 +1581,4 @@ bindForms();
 bindButtons();
 bindInputs();
 renderAll();
+initRemoteSync();

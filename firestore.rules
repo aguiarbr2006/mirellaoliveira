@@ -6,6 +6,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    match /sistemas/{sistemaId} {
+      allow read, write: if true;
+    }
+
     match /clientes/{clienteId} {
       allow read, create, update, delete: if signedIn();
     }

@@ -10,6 +10,9 @@
     <title>Rayssa Oliveira Gestão</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -213,6 +216,12 @@
         <button class="nav-item" data-page="servicos">Serviços</button>
         <button class="nav-item" data-page="admin">Admin</button>
       </nav>
+      <button class="primary-button mobile-more" id="mobileMoreButton">Mais</button>
+      <div class="mobile-more-menu" id="mobileMoreMenu">
+        <button class="nav-item" data-page="pacotes">Pacotes</button>
+        <button class="nav-item" data-page="servicos">Serviços</button>
+        <button class="nav-item" data-page="admin">Admin</button>
+      </div>
     </div>
 
     <dialog id="clientModal">
