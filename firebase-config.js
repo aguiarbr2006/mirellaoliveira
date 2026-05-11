@@ -1,19 +1,19 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+// import { initializeApp } from "firebase/app";
+// import { getAnalytics } from "firebase/analytics";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDwH3VhiWpzYRas-QXzVxNuA0-_wW7g5sE",
-  authDomain: "rayssaoliveira-b9c86.firebaseapp.com",
-  projectId: "rayssaoliveira-b9c86",
-  storageBucket: "rayssaoliveira-b9c86.firebasestorage.app",
-  messagingSenderId: "983397980222",
-  appId: "1:983397980222:web:75c6765109f537c0d7196f",
-  measurementId: "G-XBX5ZNPTFZ"
+// const firebaseConfig = {
+//   apiKey: "AIzaSyDwH3VhiWpzYRas-QXzVxNuA0-_wW7g5sE",
+//   authDomain: "rayssaoliveira-b9c86.firebaseapp.com",
+//   projectId: "rayssaoliveira-b9c86",
+//   storageBucket: "rayssaoliveira-b9c86.firebasestorage.app",
+//   messagingSenderId: "983397980222",
+//   appId: "1:983397980222:web:75c6765109f537c0d7196f",
+//   measurementId: "G-XBX5ZNPTFZ"
 };
 
 // Initialize Firebase
@@ -22,14 +22,15 @@ const analytics = getAnalytics(app);
 
 // Preencha com as credenciais do seu projeto Firebase.
 // Firebase Console > Project settings > General > Your apps > Web app.
-// window.RAYSSA_FIREBASE_CONFIG = {
-//   apiKey: "COLE_AQUI_API_KEY",
-//   authDomain: "COLE_AQUI_AUTH_DOMAIN",
-//   projectId: "COLE_AQUI_PROJECT_ID",
-//   storageBucket: "COLE_AQUI_STORAGE_BUCKET",
-//   messagingSenderId: "COLE_AQUI_MESSAGING_SENDER_ID",
-//   appId: "COLE_AQUI_APP_ID",
-// };
+ window.RAYSSA_FIREBASE_CONFIG = {
+   apiKey: "AIzaSyDwH3VhiWpzYRas-QXzVxNuA0-_wW7g5sE",
+   authDomain: "rayssaoliveira-b9c86.firebaseapp.com",
+   projectId: "rayssaoliveira-b9c86",
+   storageBucket: "rayssaoliveira-b9c86.firebasestorage.app",
+   messagingSenderId: "983397980222",
+   appId: "1:983397980222:web:75c6765109f537c0d7196f",
+   measurementId: "G-XBX5ZNPTFZ"
+ };
 
 // Documento usado para sincronizar celular, notebook e demais aparelhos.
-// window.RAYSSA_FIREBASE_DOC_PATH = "sistemas/rayssa-oliveira";
+ window.RAYSSA_FIREBASE_DOC_PATH = "sistemas/rayssa-oliveira";
