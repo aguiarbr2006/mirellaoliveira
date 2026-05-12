@@ -34,7 +34,6 @@ let pendingRemoteSave = null;
 let deferredInstallPrompt = null;
 let currentUser = null;
 let userPermissions = {};
-let loginMode = "login";
 
 const pages = {
   dashboard: {
@@ -342,9 +341,6 @@ function showApp() {
 
 async function handleAuthSubmit(event) {
   event.preventDefault();
-  if (loginMode === "register") {
-    return handleRegister();
-  }
   return handleLogin();
 }
 
@@ -392,125 +388,7 @@ async function resolveLoginEmail(identifier) {
   }
 }
 
-async function handleRegister() {
-  const name = document.querySelector("#registerName").value.trim();
-  const username = document.querySelector("#registerUsername").value.trim();
-  const email = document.querySelector("#registerEmail").value.trim();
-  const password = document.querySelector("#loginPassword").value;
-  const confirmPassword = document.querySelector("#loginConfirmPassword").value;
 
-  if (!name) {
-    setLoginError("Informe seu nome para criar a conta.");
-    return;
-  }
-  if (!username) {
-    setLoginError("Informe um nome de usuário.");
-    return;
-  }
-  if (!email) {
-    setLoginError("Informe seu email.");
-    return;
-  }
-  if (!password) {
-    setLoginError("Informe a senha.");
-    return;
-  }
-  if (password !== confirmPassword) {
-    setLoginError("As senhas não coincidem.");
-    return;
-  }
-  if (password.length < 6) {
-    setLoginError("A senha precisa ter pelo menos 6 caracteres.");
-    return;
-  }
-
-  setLoginError("");
-
-  try {
-    if (!remoteDb) remoteDb = firebase.firestore();
-    const usernameSnapshot = await remoteDb.collection("users").where("username", "==", username).limit(1).get();
-    if (!usernameSnapshot.empty) {
-      setLoginError("Nome de usuário já está em uso. Escolha outro.");
-      return;
-    }
-
-    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
-    const uid = userCredential.user.uid;
-    const usersSnapshot = await remoteDb.collection("users").limit(1).get();
-    const isFirstUser = usersSnapshot.empty;
-    const permissions = isFirstUser
-      ? {
-          viewDashboard: true,
-          viewAgenda: true,
-          createClient: true,
-          editClient: true,
-          createAppointment: true,
-          editAppointment: true,
-          changeStatus: true,
-          viewFinance: true,
-          admin: true,
-        }
-      : {
-          viewDashboard: true,
-          viewAgenda: true,
-          createClient: true,
-          editClient: false,
-          createAppointment: true,
-          editAppointment: false,
-          changeStatus: false,
-          viewFinance: false,
-          admin: false,
-        };
-
-    await remoteDb.collection("users").doc(uid).set({
-      name,
-      username,
-      email,
-      permissions,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
-
-    await firebase.auth().signOut();
-    setLoginMode("login");
-    toast("Conta criada com sucesso. Faça login.");
-  } catch (error) {
-    let errorMessage = error.message || "Erro ao criar a conta";
-
-    if (error.code === "auth/email-already-in-use") {
-      errorMessage = "Este email já está em uso. Tente fazer login.";
-    } else if (error.code === "auth/invalid-email") {
-      errorMessage = "Email inválido. Verifique o formato.";
-    } else if (error.code === "auth/weak-password") {
-      errorMessage = "Senha muito fraca. Use ao menos 6 caracteres.";
-    }
-
-    setLoginError(errorMessage);
-  }
-}
-
-function setLoginMode(mode) {
-  loginMode = mode;
-  const isRegister = mode === "register";
-  const registerNameField = document.querySelector("#registerNameField");
-  const registerUsernameField = document.querySelector("#registerUsernameField");
-  const registerEmailField = document.querySelector("#registerEmailField");
-  const registerConfirmField = document.querySelector("#registerConfirmField");
-  const loginIdentifierField = document.querySelector("#loginIdentifierField");
-  const loginSubmitButton = document.querySelector("#loginSubmitButton");
-  const toggleLoginMode = document.querySelector("#toggleLoginMode");
-  const loginHint = document.querySelector("#loginHint");
-
-  if (registerNameField) registerNameField.classList.toggle("hidden", !isRegister);
-  if (registerUsernameField) registerUsernameField.classList.toggle("hidden", !isRegister);
-  if (registerEmailField) registerEmailField.classList.toggle("hidden", !isRegister);
-  if (loginIdentifierField) loginIdentifierField.classList.toggle("hidden", isRegister);
-  if (registerConfirmField) registerConfirmField.classList.toggle("hidden", !isRegister);
-  if (loginSubmitButton) loginSubmitButton.textContent = isRegister ? "Cadastrar" : "Entrar";
-  if (toggleLoginMode) toggleLoginMode.textContent = isRegister ? "Já tenho conta" : "Cadastrar";
-  if (loginHint) loginHint.textContent = isRegister ? "Já tem uma conta?" : "Ainda não tem conta?";
-  setLoginError("");
-}
 
 function setLoginError(message) {
   const errorDiv = document.querySelector("#loginError");
@@ -1218,7 +1096,15 @@ function renderPackages() {
 }
 
 function renderEmployees() {
-  if (!checkPermission("admin")) {
+  const isAdmin = checkPermission("admin");
+
+  // Ocultar/mostrar botões de novo funcionário
+  const openEmployeeModalAdmin = document.querySelector("#openEmployeeModalAdmin");
+  const openEmployeeModal = document.querySelector("#openEmployeeModal");
+  if (openEmployeeModalAdmin) openEmployeeModalAdmin.style.display = isAdmin ? "inline-block" : "none";
+  if (openEmployeeModal) openEmployeeModal.style.display = isAdmin ? "inline-block" : "none";
+
+  if (!isAdmin) {
     document.querySelector("#employeeList").innerHTML = empty("Acesso negado.");
     const adminEmployeeList = document.querySelector("#adminEmployeeList");
     if (adminEmployeeList) adminEmployeeList.innerHTML = empty("Acesso negado.");
@@ -1916,8 +1802,20 @@ function bindButtons() {
   document.querySelector("#openServiceModal").addEventListener("click", () => openService());
   document.querySelector("#openAppointmentModal").addEventListener("click", () => openAppointment());
   document.querySelector("#quickAppointment").addEventListener("click", () => openAppointment());
-  document.querySelector("#openEmployeeModalAdmin").addEventListener("click", () => openEmployee());
-  document.querySelector("#openEmployeeModal").addEventListener("click", () => openEmployee());
+  document.querySelector("#openEmployeeModalAdmin").addEventListener("click", () => {
+    if (!checkPermission("admin")) {
+      toast("Apenas administradores podem gerenciar funcionários.");
+      return;
+    }
+    openEmployee();
+  });
+  document.querySelector("#openEmployeeModal").addEventListener("click", () => {
+    if (!checkPermission("admin")) {
+      toast("Apenas administradores podem gerenciar funcionários.");
+      return;
+    }
+    openEmployee();
+  });
   document.querySelector("#openFinanceModal").addEventListener("click", () => openFinance());
   document.querySelector("#openPackageModal").addEventListener("click", () => openPackage());
   document.querySelector("#currentMonth").addEventListener("click", renderMonthCalendar);
@@ -2183,7 +2081,6 @@ function download(filename, content, type) {
 bindNavigation();
 bindModalClose();
 bindForms();
-setLoginMode("login");
 bindButtons();
 bindInputs();
 renderAll();
