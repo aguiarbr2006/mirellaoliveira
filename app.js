@@ -933,16 +933,34 @@ function monthEvent(appointment) {
 }
 
 function renderRevenueChart() {
-  const days = Number(document.querySelector("#dashboardPeriod").value || 30);
+  const periodValue = document.querySelector("#dashboardPeriod").value || "30";
   const now = new Date();
   const data = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(now.getDate() - i);
+  const dates = [];
+
+  if (periodValue === "currentMonth") {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const daysInMonth = now.getDate();
+    for (let i = 0; i < daysInMonth; i++) {
+      const date = new Date(monthStart);
+      date.setDate(monthStart.getDate() + i);
+      dates.push(date);
+    }
+  } else {
+    const days = Number(periodValue);
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      dates.push(date);
+    }
+  }
+
+  dates.forEach((date) => {
     const key = toDateInput(date);
     const total = sum(state.financeiro.filter((f) => f.tipo === "entrada" && f.data === key));
     data.push({ key, total });
-  }
+  });
+
   const max = Math.max(...data.map((d) => d.total), 1);
   document.querySelector("#revenueChart").innerHTML = data
     .map((d) => {
