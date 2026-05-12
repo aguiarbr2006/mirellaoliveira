@@ -207,8 +207,8 @@ function isFirebaseConfigured() {
       config &&
       config.apiKey &&
       config.projectId &&
-      !String(config.apiKey).startsWith("AIzaSyDwH3VhiWpzYRas-QXzVxNuA0-_wW7g5sE") &&
-      !String(config.projectId).startsWith("rayssaoliveira-b9c86"),
+      !String(config.apiKey).startsWith("YOUR_API_KEY") &&
+      !String(config.projectId).startsWith("YOUR_PROJECT_ID")
   );
 }
 
