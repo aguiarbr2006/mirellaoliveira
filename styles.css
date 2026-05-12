@@ -22,8 +22,13 @@ body {
   min-height: 100vh;
   background: var(--beige);
   color: var(--ink);
-  overflow-x: hidden;
+  overflow-x: auto;
   -webkit-text-size-adjust: 100%;
+  min-width: 0;
+}
+
+html {
+  min-width: 0;
 }
 
 button,
@@ -521,9 +526,11 @@ dialog {
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
+    display: block;
   }
 
   .sidebar {
+    display: none;
     position: relative;
     top: auto;
     height: auto;
@@ -557,6 +564,23 @@ dialog {
   .panel-title {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .app-shell,
+  .main,
+  .page,
+  .stats-grid,
+  .content-grid,
+  .toolbar,
+  .topbar,
+  .panel,
+  .list {
+    min-width: 0;
+  }
+
+  .month-calendar,
+  .chart {
+    width: 100%;
   }
 }
 
