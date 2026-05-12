@@ -378,11 +378,20 @@ async function resolveLoginEmail(identifier) {
 
   try {
     if (!remoteDb) remoteDb = firebase.firestore();
-    const snapshot = await remoteDb.collection("users").where("username", "==", identifier).limit(1).get();
-    if (snapshot.empty) {
-      throw new Error("Usuário não encontrado");
+    
+    // First try username
+    let snapshot = await remoteDb.collection("users").where("username", "==", identifier).limit(1).get();
+    if (!snapshot.empty) {
+      return snapshot.docs[0].data().email;
     }
-    return snapshot.docs[0].data().email;
+    
+    // Then try name
+    snapshot = await remoteDb.collection("users").where("name", "==", identifier).limit(1).get();
+    if (!snapshot.empty) {
+      return snapshot.docs[0].data().email;
+    }
+    
+    throw new Error("Usuário não encontrado");
   } catch (error) {
     throw { code: "auth/user-not-found", message: "Usuário não encontrado." };
   }
@@ -1179,6 +1188,7 @@ function openEmployee(employeeId = null) {
       if (doc.exists) {
         const employee = doc.data();
         document.querySelector("#employeeName").value = employee.name || "";
+        document.querySelector("#employeeUsername").value = employee.username || "";
         document.querySelector("#employeeEmail").value = employee.email || "";
         document.querySelector("#employeePassword").value = ""; // Don't populate password
 
@@ -1762,6 +1772,7 @@ function bindForms() {
 
     const employeeId = document.querySelector("#employeeId").value;
     const name = document.querySelector("#employeeName").value.trim();
+    const username = document.querySelector("#employeeUsername").value.trim();
     const email = document.querySelector("#employeeEmail").value.trim();
     const password = document.querySelector("#employeePassword").value;
 
@@ -1783,6 +1794,7 @@ function bindForms() {
         const userRef = remoteDb.collection("users").doc(employeeId);
         await userRef.update({
           name,
+          username,
           email,
           permissions,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1798,6 +1810,7 @@ function bindForms() {
         const uid = userCredential.user.uid;
         await remoteDb.collection("users").doc(uid).set({
           name,
+          username,
           email,
           permissions,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
