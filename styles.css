@@ -330,6 +330,11 @@ textarea {
   gap: 12px;
 }
 
+.item-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .item-title {
   margin: 0;
   font-size: 17px;

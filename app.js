@@ -1132,6 +1132,10 @@ function renderEmployees() {
     document.querySelectorAll("[data-edit-employee]").forEach((button) => {
       button.addEventListener("click", () => openEmployee(button.dataset.editEmployee));
     });
+
+    document.querySelectorAll("[data-delete-employee]").forEach((button) => {
+      button.addEventListener("click", () => deleteEmployee(button.dataset.deleteEmployee));
+    });
   }).catch((error) => {
     console.error("Erro ao carregar funcionários:", error);
     if (employeeList) employeeList.innerHTML = empty("Erro ao carregar funcionários.");
@@ -1150,7 +1154,10 @@ function employeeCard(employee) {
           <div class="muted">${escapeHtml(employee.email)}</div>
           <div class="muted">${permCount} permissões ativas</div>
         </div>
-        <button class="ghost-button" data-edit-employee="${employee.id}">Editar</button>
+        <div class="item-actions">
+          <button class="ghost-button" data-edit-employee="${employee.id}">Editar</button>
+          <button class="danger-button" data-delete-employee="${employee.id}">Excluir</button>
+        </div>
       </div>
     </article>
   `;
@@ -1193,6 +1200,25 @@ function openEmployee(employeeId = null) {
   }
 
   document.querySelector("#employeeModal").showModal();
+}
+
+function deleteEmployee(employeeId) {
+  if (!checkPermission("admin")) {
+    toast("Apenas administradores podem excluir funcionários.");
+    return;
+  }
+
+  if (!confirm("Tem certeza que deseja excluir este funcionário? Esta ação não pode ser desfeita.")) {
+    return;
+  }
+
+  remoteDb.collection("users").doc(employeeId).delete().then(() => {
+    toast("Funcionário excluído com sucesso.");
+    renderEmployees();
+  }).catch((error) => {
+    console.error("Erro ao excluir funcionário:", error);
+    toast("Erro ao excluir funcionário.");
+  });
 }
 
 function packageCard(pacote) {
