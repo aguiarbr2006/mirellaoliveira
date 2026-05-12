@@ -616,12 +616,24 @@ dialog {
     gap: 8px;
   }
 
+  .chart,
   .month-calendar {
-    grid-template-columns: repeat(7, minmax(100px, 1fr));
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .month-calendar {
+    grid-template-columns: repeat(7, minmax(90px, 1fr));
+    overflow-x: auto;
   }
 
   .month-day {
-    min-width: auto;
+    min-width: 90px;
+  }
+
+  .panel {
+    min-width: 0;
   }
 
   .sidebar {
