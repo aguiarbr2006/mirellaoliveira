@@ -12,10 +12,34 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="firebase-config.js"></script>
   </head>
   <body>
-    <div class="app-shell">
+    <div id="loginOverlay" class="login-overlay">
+      <div class="login-modal">
+        <div class="login-header">
+          <h1>Rayssa Oliveira Gestão</h1>
+          <p>Acesso de Funcionários</p>
+        </div>
+        <form id="loginForm" class="login-form">
+          <label id="loginIdentifierField">
+            Usuário ou email
+            <input type="text" id="loginIdentifier" required />
+          </label>
+          <label>
+            Senha
+            <input type="password" id="loginPassword" required />
+          </label>
+          <button type="submit" class="primary-button" id="loginSubmitButton">Entrar</button>
+          <div id="loginError" class="login-error"></div>
+        </form>
+        <div class="login-footer">
+          <p><small>Sistema seguro com autenticação de funcionários</small></p>
+        </div>
+      </div>
+    </div>
+    <div class="app-shell" id="appShell" style="display: none;">
       <aside class="sidebar">
         <div class="brand">
           <span class="brand-mark">N</span>
@@ -43,8 +67,7 @@
             <p id="pageSubtitle">Resumo do seu dia e do financeiro.</p>
           </div>
           <div class="top-actions">
-            <button class="ghost-button" id="exportBackup">Exportar BKP</button>
-            <button class="ghost-button" id="importBackup">Importar BKP</button>
+            <button class="ghost-button" id="logoutBtn">Sair</button>
             <button class="primary-button" id="quickAppointment">Novo agendamento</button>
           </div>
         </header>
@@ -108,7 +131,7 @@
 
         <section class="page" id="agendaPage">
           <div class="toolbar">
-            <input type="date" id="agendaDate" />
+            <input type="month" id="agendaMonth" />
             <select id="agendaStatus">
               <option value="todos">Todos os status</option>
               <option>Agendado</option>
@@ -184,10 +207,10 @@
               <label>Subtítulo<input id="settingSubtitle" /></label>
               <label>Texto da logo<input id="settingLogoText" maxlength="3" /></label>
               <label>Imagem da logo<input id="settingLogoImage" type="file" accept="image/*" /></label>
-              <label>Cor principal<input id="settingGreen" type="color" /></label>
-              <label>Cor escura<input id="settingGreenDark" type="color" /></label>
+              <label>Cor principal <small>Cor do botão primário</small><input id="settingGreen" type="color" /></label>
+              <label>Cor escura <small>Cor do texto secundário e botões ghost</small><input id="settingGreenDark" type="color" /></label>
               <label>Fundo<input id="settingBeige" type="color" /></label>
-              <label>Texto<input id="settingInk" type="color" /></label>
+              <label>Texto <small>Cor do texto principal</small><input id="settingInk" type="color" /></label>
               <label>Crédito do desenvolvedor<input id="settingDeveloperCredit" readonly /></label>
             </div>
             <div class="admin-preview">
@@ -199,11 +222,35 @@
               <button class="primary-button" type="button">Botão principal</button>
               <button class="ghost-button" type="button">Botão secundário</button>
             </div>
+            <div class="admin-backup-actions">            <h3>Gerenciamento de Funcionários</h3>
+            <p>Cadastre e defina as permissões dos funcionários.</p>
+            <button class="primary-button" id="openEmployeeModalAdmin" type="button">Novo Funcionário</button>
+            <div id="adminEmployeeList" class="employee-list"></div>
+          </div>
+          <div class="admin-backup-actions">              <h3>Backup</h3>
+              <p>Use estas opções para importar ou exportar seus dados.</p>
+              <button class="ghost-button" id="exportBackup" type="button">Exportar BKP</button>
+              <button class="ghost-button" id="importBackup" type="button">Importar BKP</button>
+            </div>
+            <div class="admin-backup-actions">
+              <h3>Instalar app</h3>
+              <p>Instale este app no seu celular ou no Windows como PWA.</p>
+              <button class="ghost-button" id="installApp" type="button">Instalar app</button>
+              <p class="install-hint" id="installAppHint"></p>
+            </div>
             <footer class="admin-actions">
               <button class="ghost-button" type="button" id="resetSettings">Restaurar padrão</button>
               <button class="primary-button" type="submit">Salvar configurações</button>
             </footer>
           </form>
+        </section>
+
+        <section class="page" id="funcionariosPage">
+          <div class="toolbar">
+            <h2>Funcionários</h2>
+            <button class="primary-button" id="openEmployeeModal">Novo Funcionário</button>
+          </div>
+          <div class="list cards" id="employeeList"></div>
         </section>
       </main>
 
@@ -220,6 +267,7 @@
       <div class="mobile-more-menu" id="mobileMoreMenu">
         <button class="nav-item" data-page="pacotes">Pacotes</button>
         <button class="nav-item" data-page="servicos">Serviços</button>
+        <button class="nav-item" data-page="funcionarios">Funcionários</button>
         <button class="nav-item" data-page="admin">Admin</button>
       </div>
     </div>
@@ -374,6 +422,62 @@
         <footer>
           <button type="button" class="ghost-button" data-close="conflictModal">Entendi</button>
           <button class="primary-button" type="button" id="applyConflictSuggestion">Usar sugestão</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="employeeModal">
+      <form method="dialog" class="modal-form" id="employeeForm">
+        <header>
+          <h2>Funcionário</h2>
+          <button value="cancel" class="icon-button" type="button" data-close="employeeModal">×</button>
+        </header>
+        <input type="hidden" id="employeeId" />
+        <label>Nome<input id="employeeName" required /></label>
+        <label>Email<input id="employeeEmail" type="email" required /></label>
+        <label>Senha<input id="employeePassword" type="password" placeholder="Deixe em branco para manter a atual" /></label>
+        <div class="permissions-section">
+          <h3>Permissões</h3>
+          <label class="checkbox">
+            <input type="checkbox" id="permViewDashboard" />
+            <span>Ver Dashboard</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="permViewAgenda" />
+            <span>Acessar Agenda</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="permCreateClient" />
+            <span>Cadastrar Clientes</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="permEditClient" />
+            <span>Editar Clientes</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="permCreateAppointment" />
+            <span>Criar Agendamentos</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="permEditAppointment" />
+            <span>Editar Agendamentos</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="permChangeStatus" />
+            <span>Trocar Status</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="permViewFinance" />
+            <span>Acessar Financeiro</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="permAdmin" />
+            <span>Acesso Administrador (Todas as permissões)</span>
+          </label>
+        </div>
+        <footer>
+          <button type="button" class="ghost-button" data-close="employeeModal">Cancelar</button>
+          <button class="primary-button" type="submit">Salvar</button>
         </footer>
       </form>
     </dialog>

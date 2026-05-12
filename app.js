@@ -31,6 +31,10 @@ let remoteDocRef = null;
 let remoteReady = false;
 let applyingRemoteState = false;
 let pendingRemoteSave = null;
+let deferredInstallPrompt = null;
+let currentUser = null;
+let userPermissions = {};
+let loginMode = "login";
 
 const pages = {
   dashboard: {
@@ -67,6 +71,11 @@ const pages = {
     title: "Administração",
     subtitle: "Nome, logo e cores do sistema.",
     el: document.querySelector("#adminPage"),
+  },
+  funcionarios: {
+    title: "Funcionários",
+    subtitle: "Gerenciamento de usuários e permissões.",
+    el: document.querySelector("#funcionariosPage"),
   },
 };
 
@@ -210,6 +219,320 @@ function isFirebaseConfigured() {
       !String(config.apiKey).startsWith("YOUR_API_KEY") &&
       !String(config.projectId).startsWith("YOUR_PROJECT_ID")
   );
+}
+
+async function initAuth() {
+  if (!isFirebaseConfigured()) {
+    console.info("Firebase não configurado. Autenticação desabilitada.");
+    showApp();
+    return;
+  }
+
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(window.RAYSSA_FIREBASE_CONFIG);
+
+    if (window.location.protocol === "file:") {
+      showLogin();
+      setLoginError(
+        "O app está sendo executado via file://. Para usar Firebase Auth, rode o app em http://localhost ou publique no Firebase Hosting."
+      );
+      return;
+    }
+    
+    // Criar conta admin padrão se não existir
+    await createDefaultAdminAccount();
+    
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = user;
+        await loadUserPermissions(user.uid);
+        showApp();
+        renderAll();
+      } else {
+        currentUser = null;
+        showLogin();
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao inicializar autenticação:", error);
+    showApp();
+  }
+}
+
+async function createDefaultAdminAccount() {
+  try {
+    const adminEmail = "aguiar-br@hotmail.com";
+    const adminPassword = "guitarra";
+    const adminName = "Administrador";
+
+    // Tentar fazer login com a conta admin para verificar se ela existe
+    try {
+      await firebase.auth().signInWithEmailAndPassword(adminEmail, adminPassword);
+      console.log("Conta admin já existe e está ativa");
+      await firebase.auth().signOut(); // Fazer logout para permitir login normal
+      return;
+    } catch (loginError) {
+      if (loginError.code === "auth/user-not-found") {
+        console.log("Criando conta admin padrão...");
+
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(adminEmail, adminPassword);
+        const uid = userCredential.user.uid;
+
+        await firebase.firestore().collection("users").doc(uid).set({
+          name: adminName,
+          username: "admin",
+          email: adminEmail,
+          permissions: {
+            viewDashboard: true,
+            viewAgenda: true,
+            createClient: true,
+            editClient: true,
+            createAppointment: true,
+            editAppointment: true,
+            changeStatus: true,
+            viewFinance: true,
+            admin: true,
+          },
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log("Conta admin criada com sucesso");
+        await firebase.auth().signOut();
+      } else {
+        console.log("Conta admin pode já existir:", loginError.message);
+      }
+    }
+  } catch (error) {
+    console.error("Erro ao criar conta admin:", error);
+  }
+}
+
+async function loadUserPermissions(uid) {
+  try {
+    if (!remoteDb) remoteDb = firebase.firestore();
+    const doc = await remoteDb.collection("users").doc(uid).get();
+    if (doc.exists) {
+      userPermissions = doc.data().permissions || {};
+    } else {
+      // Se o documento não existe, é um novo usuário
+      userPermissions = {};
+    }
+  } catch (error) {
+    console.error("Erro ao carregar permissões:", error);
+    userPermissions = {};
+  }
+}
+
+function checkPermission(permission) {
+  if (!currentUser) return false;
+  if (userPermissions.admin) return true;
+  return userPermissions[permission] || false;
+}
+
+function showLogin() {
+  document.querySelector("#appShell").style.display = "none";
+  document.querySelector("#loginOverlay").style.display = "flex";
+}
+
+function showApp() {
+  document.querySelector("#appShell").style.display = "grid";
+  document.querySelector("#loginOverlay").style.display = "none";
+}
+
+async function handleAuthSubmit(event) {
+  event.preventDefault();
+  if (loginMode === "register") {
+    return handleRegister();
+  }
+  return handleLogin();
+}
+
+async function handleLogin() {
+  const identifier = document.querySelector("#loginIdentifier").value.trim();
+  const password = document.querySelector("#loginPassword").value;
+
+  setLoginError("");
+
+  try {
+    const email = await resolveLoginEmail(identifier);
+    await firebase.auth().signInWithEmailAndPassword(email, password);
+    document.querySelector("#loginForm").reset();
+  } catch (error) {
+    let errorMessage = error.message || "Erro ao fazer login";
+
+    if (error.code === "auth/configuration-not-found") {
+      errorMessage = "Firebase Authentication não está habilitado. Acesse o console do Firebase para habilitar.";
+    } else if (error.code === "auth/user-not-found") {
+      errorMessage = "Usuário não encontrado. Verifique o usuário ou email digitado.";
+    } else if (error.code === "auth/wrong-password") {
+      errorMessage = "Senha incorreta. Tente novamente.";
+    } else if (error.code === "auth/invalid-email") {
+      errorMessage = "Email inválido. Verifique o formato.";
+    }
+
+    setLoginError(errorMessage);
+  }
+}
+
+async function resolveLoginEmail(identifier) {
+  if (identifier.includes("@")) {
+    return identifier;
+  }
+
+  try {
+    if (!remoteDb) remoteDb = firebase.firestore();
+    const snapshot = await remoteDb.collection("users").where("username", "==", identifier).limit(1).get();
+    if (snapshot.empty) {
+      throw new Error("Usuário não encontrado");
+    }
+    return snapshot.docs[0].data().email;
+  } catch (error) {
+    throw { code: "auth/user-not-found", message: "Usuário não encontrado." };
+  }
+}
+
+async function handleRegister() {
+  const name = document.querySelector("#registerName").value.trim();
+  const username = document.querySelector("#registerUsername").value.trim();
+  const email = document.querySelector("#registerEmail").value.trim();
+  const password = document.querySelector("#loginPassword").value;
+  const confirmPassword = document.querySelector("#loginConfirmPassword").value;
+
+  if (!name) {
+    setLoginError("Informe seu nome para criar a conta.");
+    return;
+  }
+  if (!username) {
+    setLoginError("Informe um nome de usuário.");
+    return;
+  }
+  if (!email) {
+    setLoginError("Informe seu email.");
+    return;
+  }
+  if (!password) {
+    setLoginError("Informe a senha.");
+    return;
+  }
+  if (password !== confirmPassword) {
+    setLoginError("As senhas não coincidem.");
+    return;
+  }
+  if (password.length < 6) {
+    setLoginError("A senha precisa ter pelo menos 6 caracteres.");
+    return;
+  }
+
+  setLoginError("");
+
+  try {
+    if (!remoteDb) remoteDb = firebase.firestore();
+    const usernameSnapshot = await remoteDb.collection("users").where("username", "==", username).limit(1).get();
+    if (!usernameSnapshot.empty) {
+      setLoginError("Nome de usuário já está em uso. Escolha outro.");
+      return;
+    }
+
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    const uid = userCredential.user.uid;
+    const usersSnapshot = await remoteDb.collection("users").limit(1).get();
+    const isFirstUser = usersSnapshot.empty;
+    const permissions = isFirstUser
+      ? {
+          viewDashboard: true,
+          viewAgenda: true,
+          createClient: true,
+          editClient: true,
+          createAppointment: true,
+          editAppointment: true,
+          changeStatus: true,
+          viewFinance: true,
+          admin: true,
+        }
+      : {
+          viewDashboard: true,
+          viewAgenda: true,
+          createClient: true,
+          editClient: false,
+          createAppointment: true,
+          editAppointment: false,
+          changeStatus: false,
+          viewFinance: false,
+          admin: false,
+        };
+
+    await remoteDb.collection("users").doc(uid).set({
+      name,
+      username,
+      email,
+      permissions,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    await firebase.auth().signOut();
+    setLoginMode("login");
+    toast("Conta criada com sucesso. Faça login.");
+  } catch (error) {
+    let errorMessage = error.message || "Erro ao criar a conta";
+
+    if (error.code === "auth/email-already-in-use") {
+      errorMessage = "Este email já está em uso. Tente fazer login.";
+    } else if (error.code === "auth/invalid-email") {
+      errorMessage = "Email inválido. Verifique o formato.";
+    } else if (error.code === "auth/weak-password") {
+      errorMessage = "Senha muito fraca. Use ao menos 6 caracteres.";
+    }
+
+    setLoginError(errorMessage);
+  }
+}
+
+function setLoginMode(mode) {
+  loginMode = mode;
+  const isRegister = mode === "register";
+  const registerNameField = document.querySelector("#registerNameField");
+  const registerUsernameField = document.querySelector("#registerUsernameField");
+  const registerEmailField = document.querySelector("#registerEmailField");
+  const registerConfirmField = document.querySelector("#registerConfirmField");
+  const loginIdentifierField = document.querySelector("#loginIdentifierField");
+  const loginSubmitButton = document.querySelector("#loginSubmitButton");
+  const toggleLoginMode = document.querySelector("#toggleLoginMode");
+  const loginHint = document.querySelector("#loginHint");
+
+  if (registerNameField) registerNameField.classList.toggle("hidden", !isRegister);
+  if (registerUsernameField) registerUsernameField.classList.toggle("hidden", !isRegister);
+  if (registerEmailField) registerEmailField.classList.toggle("hidden", !isRegister);
+  if (loginIdentifierField) loginIdentifierField.classList.toggle("hidden", isRegister);
+  if (registerConfirmField) registerConfirmField.classList.toggle("hidden", !isRegister);
+  if (loginSubmitButton) loginSubmitButton.textContent = isRegister ? "Cadastrar" : "Entrar";
+  if (toggleLoginMode) toggleLoginMode.textContent = isRegister ? "Já tenho conta" : "Cadastrar";
+  if (loginHint) loginHint.textContent = isRegister ? "Já tem uma conta?" : "Ainda não tem conta?";
+  setLoginError("");
+}
+
+function setLoginError(message) {
+  const errorDiv = document.querySelector("#loginError");
+  if (!errorDiv) return;
+  errorDiv.textContent = message;
+  if (message) {
+    errorDiv.classList.add("show");
+  } else {
+    errorDiv.classList.remove("show");
+  }
+}
+
+async function handleLogout() {
+  try {
+    await firebase.auth().signOut();
+    currentUser = null;
+    userPermissions = {};
+    showLogin();
+  } catch (error) {
+    console.error("Erro ao fazer logout:", error);
+    toast("Erro ao fazer logout");
+  }
 }
 
 function initRemoteSync() {
@@ -387,6 +710,16 @@ function toast(message) {
 }
 
 function setPage(pageName) {
+  // Check permissions for restricted pages
+  if ((pageName === "admin" || pageName === "funcionarios") && !checkPermission("admin")) {
+    toast("Acesso negado. Apenas administradores podem acessar esta página.");
+    return;
+  }
+  if (pageName === "financeiro" && !checkPermission("viewFinance")) {
+    toast("Acesso negado. Você não tem permissão para acessar o financeiro.");
+    return;
+  }
+
   Object.entries(pages).forEach(([key, page]) => {
     page.el.classList.toggle("active", key === pageName);
   });
@@ -615,7 +948,24 @@ function renderAll() {
   renderServices();
   renderFinance();
   renderPackages();
+  renderEmployees();
+  updateNavigationVisibility();
   fillSelects();
+}
+
+function updateNavigationVisibility() {
+  // Hide admin and funcionarios pages from non-admins
+  const adminPages = ["admin", "funcionarios"];
+  adminPages.forEach(page => {
+    document.querySelectorAll(`[data-page="${page}"]`).forEach(btn => {
+      btn.style.display = checkPermission("admin") ? "" : "none";
+    });
+  });
+
+  // Hide finance page from users without finance permission
+  document.querySelectorAll(`[data-page="financeiro"]`).forEach(btn => {
+    btn.style.display = checkPermission("viewFinance") ? "" : "none";
+  });
 }
 
 function renderDashboard() {
@@ -737,18 +1087,44 @@ function renderServiceRanking() {
 }
 
 function renderAppointments() {
-  const date = document.querySelector("#agendaDate").value;
+  const monthInput = document.querySelector("#agendaMonth").value; // formato: "2026-05"
   const status = document.querySelector("#agendaStatus").value;
   const search = normalize(document.querySelector("#agendaSearch").value);
+
+  // Filtrar agendamentos do mês
   const filtered = state.agendamentos
-    .filter((a) => !date || toDateInput(a.dataHoraInicio) === date)
+    .filter((a) => {
+      if (!monthInput) return true;
+      const appointmentMonth = toDateInput(a.dataHoraInicio).slice(0, 7); // "YYYY-MM"
+      return appointmentMonth === monthInput;
+    })
     .filter((a) => status === "todos" || a.status === status)
     .filter((a) => !search || normalize(`${a.nomeCliente} ${appointmentServiceName(a)} ${a.telefone}`).includes(search))
     .sort((a, b) => a.dataHoraInicio.localeCompare(b.dataHoraInicio));
 
-  document.querySelector("#appointmentList").innerHTML = filtered.length
-    ? filtered.map(appointmentCard).join("")
-    : empty("Nenhum agendamento encontrado.");
+  // Agrupar por data
+  const grouped = {};
+  filtered.forEach((appointment) => {
+    const date = toDateInput(appointment.dataHoraInicio);
+    if (!grouped[date]) grouped[date] = [];
+    grouped[date].push(appointment);
+  });
+
+  // Renderizar agrupado
+  if (Object.keys(grouped).length === 0) {
+    document.querySelector("#appointmentList").innerHTML = empty("Nenhum agendamento encontrado.");
+  } else {
+    document.querySelector("#appointmentList").innerHTML = Object.entries(grouped)
+      .map(([date, appointments]) => {
+        const dateObj = new Date(date + "T00:00");
+        const dateHeader = dateObj.toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+        return `<div class="appointment-group">
+          <h3 class="date-header">${dateHeader}</h3>
+          ${appointments.map(appointmentCard).join("")}
+        </div>`;
+      })
+      .join("");
+  }
 
   document.querySelectorAll("[data-status-appointment]").forEach((select) => {
     select.addEventListener("change", () => updateAppointmentStatus(select.dataset.statusAppointment, select.value));
@@ -839,6 +1215,98 @@ function renderPackages() {
   document.querySelectorAll("[data-edit-package]").forEach((button) => {
     button.addEventListener("click", () => openPackage(button.dataset.editPackage));
   });
+}
+
+function renderEmployees() {
+  if (!checkPermission("admin")) {
+    document.querySelector("#employeeList").innerHTML = empty("Acesso negado.");
+    const adminEmployeeList = document.querySelector("#adminEmployeeList");
+    if (adminEmployeeList) adminEmployeeList.innerHTML = empty("Acesso negado.");
+    return;
+  }
+
+  const employeeList = document.querySelector("#employeeList");
+  const adminEmployeeList = document.querySelector("#adminEmployeeList");
+  if (employeeList) employeeList.innerHTML = "<div class='loading'>Carregando funcionários...</div>";
+  if (adminEmployeeList) adminEmployeeList.innerHTML = "<div class='loading'>Carregando funcionários...</div>";
+
+  remoteDb.collection("users").get().then((snapshot) => {
+    const employees = [];
+    snapshot.forEach((doc) => {
+      employees.push({ id: doc.id, ...doc.data() });
+    });
+
+    const content = employees.length
+      ? employees.map(employeeCard).join("")
+      : empty("Nenhum funcionário cadastrado.");
+
+    if (employeeList) employeeList.innerHTML = content;
+    if (adminEmployeeList) adminEmployeeList.innerHTML = content;
+
+    document.querySelectorAll("[data-edit-employee]").forEach((button) => {
+      button.addEventListener("click", () => openEmployee(button.dataset.editEmployee));
+    });
+  }).catch((error) => {
+    console.error("Erro ao carregar funcionários:", error);
+    if (employeeList) employeeList.innerHTML = empty("Erro ao carregar funcionários.");
+    if (adminEmployeeList) adminEmployeeList.innerHTML = empty("Erro ao carregar funcionários.");
+  });
+}
+
+function employeeCard(employee) {
+  const permissions = employee.permissions || {};
+  const permCount = Object.values(permissions).filter(Boolean).length;
+  return `
+    <article class="item-card employee-item">
+      <div class="item-row">
+        <div>
+          <h3 class="item-title">${escapeHtml(employee.name || "Sem nome")}</h3>
+          <div class="muted">${escapeHtml(employee.email)}</div>
+          <div class="muted">${permCount} permissões ativas</div>
+        </div>
+        <button class="ghost-button" data-edit-employee="${employee.id}">Editar</button>
+      </div>
+    </article>
+  `;
+}
+
+function openEmployee(employeeId = null) {
+  if (!checkPermission("admin")) {
+    toast("Apenas administradores podem gerenciar funcionários.");
+    return;
+  }
+
+  const form = document.querySelector("#employeeForm");
+  form.reset();
+  document.querySelector("#employeeId").value = employeeId || "";
+
+  if (employeeId) {
+    // Load existing employee
+    remoteDb.collection("users").doc(employeeId).get().then((doc) => {
+      if (doc.exists) {
+        const employee = doc.data();
+        document.querySelector("#employeeName").value = employee.name || "";
+        document.querySelector("#employeeEmail").value = employee.email || "";
+        document.querySelector("#employeePassword").value = ""; // Don't populate password
+
+        const permissions = employee.permissions || {};
+        document.querySelector("#permViewDashboard").checked = permissions.viewDashboard || false;
+        document.querySelector("#permViewAgenda").checked = permissions.viewAgenda || false;
+        document.querySelector("#permCreateClient").checked = permissions.createClient || false;
+        document.querySelector("#permEditClient").checked = permissions.editClient || false;
+        document.querySelector("#permCreateAppointment").checked = permissions.createAppointment || false;
+        document.querySelector("#permEditAppointment").checked = permissions.editAppointment || false;
+        document.querySelector("#permChangeStatus").checked = permissions.changeStatus || false;
+        document.querySelector("#permViewFinance").checked = permissions.viewFinance || false;
+        document.querySelector("#permAdmin").checked = permissions.admin || false;
+      }
+    }).catch((error) => {
+      console.error("Erro ao carregar funcionário:", error);
+      toast("Erro ao carregar funcionário.");
+    });
+  }
+
+  document.querySelector("#employeeModal").showModal();
 }
 
 function packageCard(pacote) {
@@ -1370,6 +1838,70 @@ function bindForms() {
     renderAll();
     toast("Configurações salvas.");
   });
+
+  document.querySelector("#loginForm").addEventListener("submit", handleAuthSubmit);
+
+  document.querySelector("#employeeForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!checkPermission("admin")) {
+      toast("Apenas administradores podem gerenciar funcionários.");
+      return;
+    }
+
+    const employeeId = document.querySelector("#employeeId").value;
+    const name = document.querySelector("#employeeName").value.trim();
+    const email = document.querySelector("#employeeEmail").value.trim();
+    const password = document.querySelector("#employeePassword").value;
+
+    const permissions = {
+      viewDashboard: document.querySelector("#permViewDashboard").checked,
+      viewAgenda: document.querySelector("#permViewAgenda").checked,
+      createClient: document.querySelector("#permCreateClient").checked,
+      editClient: document.querySelector("#permEditClient").checked,
+      createAppointment: document.querySelector("#permCreateAppointment").checked,
+      editAppointment: document.querySelector("#permEditAppointment").checked,
+      changeStatus: document.querySelector("#permChangeStatus").checked,
+      viewFinance: document.querySelector("#permViewFinance").checked,
+      admin: document.querySelector("#permAdmin").checked,
+    };
+
+    try {
+      if (employeeId) {
+        // Update existing employee
+        const userRef = remoteDb.collection("users").doc(employeeId);
+        await userRef.update({
+          name,
+          email,
+          permissions,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        if (password) {
+          // Update password if provided
+          const user = await firebase.auth().getUser(employeeId);
+          await firebase.auth().updateUser(employeeId, { password });
+        }
+      } else {
+        // Create new employee
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        const uid = userCredential.user.uid;
+        await remoteDb.collection("users").doc(uid).set({
+          name,
+          email,
+          permissions,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      document.querySelector("#employeeForm").reset();
+      document.querySelector("#employeeModal").close();
+      renderEmployees();
+      toast("Funcionário salvo com sucesso.");
+    } catch (error) {
+      console.error("Erro ao salvar funcionário:", error);
+      toast("Erro ao salvar funcionário: " + error.message);
+    }
+  });
 }
 
 function bindButtons() {
@@ -1384,6 +1916,8 @@ function bindButtons() {
   document.querySelector("#openServiceModal").addEventListener("click", () => openService());
   document.querySelector("#openAppointmentModal").addEventListener("click", () => openAppointment());
   document.querySelector("#quickAppointment").addEventListener("click", () => openAppointment());
+  document.querySelector("#openEmployeeModalAdmin").addEventListener("click", () => openEmployee());
+  document.querySelector("#openEmployeeModal").addEventListener("click", () => openEmployee());
   document.querySelector("#openFinanceModal").addEventListener("click", () => openFinance());
   document.querySelector("#openPackageModal").addEventListener("click", () => openPackage());
   document.querySelector("#currentMonth").addEventListener("click", renderMonthCalendar);
@@ -1440,14 +1974,85 @@ function bindButtons() {
   document.querySelector("#exportBackup").addEventListener("click", exportBackup);
   document.querySelector("#importBackup").addEventListener("click", () => document.querySelector("#backupFile").click());
   document.querySelector("#backupFile").addEventListener("change", importBackup);
+  document.querySelector("#installApp").addEventListener("click", installApp);
   document.querySelector("#exportPdf").addEventListener("click", exportPdf);
+
+  updateInstallAppButton();
 }
 
-function bindInputs() {
-  document.querySelector("#agendaDate").value = toDateInput(new Date());
-  document.querySelector("#financeMonth").value = toMonthInput(new Date());
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
 
-  ["agendaDate", "agendaStatus", "agendaSearch", "clientSearch", "serviceSearch", "packageSearch", "financeMonth", "financeType", "dashboardPeriod"].forEach((idName) => {
+function isInStandaloneMode() {
+  return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+}
+
+function updateInstallAppButton() {
+  const installButton = document.querySelector("#installApp");
+  const installHint = document.querySelector("#installAppHint");
+  if (!installButton || !installHint) return;
+
+  if (isInStandaloneMode()) {
+    installButton.style.display = "none";
+    installHint.textContent = "O app já está instalado.";
+    return;
+  }
+
+  installButton.style.display = "inline-flex";
+  if (deferredInstallPrompt) {
+    installHint.textContent = "Toque para instalar o app no seu dispositivo.";
+  } else if (isIos()) {
+    installHint.textContent = "No iOS, use o menu Compartilhar e escolha 'Adicionar à Tela de Início'.";
+  } else {
+    installHint.textContent = "Use o menu do navegador para instalar o app se não aparecer o prompt.";
+  }
+}
+
+async function installApp() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const choiceResult = await deferredInstallPrompt.userChoice;
+    if (choiceResult.outcome === "accepted") {
+      toast("Instalação iniciada.");
+    } else {
+      toast("Instalação cancelada.");
+    }
+    deferredInstallPrompt = null;
+    updateInstallAppButton();
+    return;
+  }
+
+  if (isIos()) {
+    toast("No iOS, use Compartilhar > Adicionar à Tela de Início.");
+  } else {
+    toast("Use o menu do navegador para instalar o app.");
+  }
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  updateInstallAppButton();
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  updateInstallAppButton();
+  toast("App instalado com sucesso.");
+});
+
+function bindInputs() {
+  const agendaMonth = document.querySelector("#agendaMonth");
+  if (agendaMonth) {
+    agendaMonth.value = toMonthInput(new Date());
+  }
+  const financeMonth = document.querySelector("#financeMonth");
+  if (financeMonth) {
+    financeMonth.value = toMonthInput(new Date());
+  }
+
+  ["agendaMonth", "agendaStatus", "agendaSearch", "clientSearch", "serviceSearch", "packageSearch", "financeMonth", "financeType", "dashboardPeriod"].forEach((idName) => {
     document.querySelector(`#${idName}`).addEventListener("input", renderAll);
   });
 
@@ -1578,7 +2183,9 @@ function download(filename, content, type) {
 bindNavigation();
 bindModalClose();
 bindForms();
+setLoginMode("login");
 bindButtons();
 bindInputs();
 renderAll();
+initAuth(); // Changed from initRemoteSync()
 initRemoteSync();

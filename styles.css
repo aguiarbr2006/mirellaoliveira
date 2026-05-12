@@ -292,6 +292,27 @@ textarea {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 
+.appointment-group {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.date-header {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--green-dark);
+  text-transform: capitalize;
+  padding-top: 12px;
+  border-top: 2px solid var(--line);
+}
+
+.date-header:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
 .compact {
   gap: 8px;
 }
@@ -537,6 +558,13 @@ label {
   font-weight: 700;
 }
 
+label small {
+  display: block;
+  font-weight: 400;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
 .checkbox {
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -600,6 +628,163 @@ label {
   color: var(--muted);
   text-align: center;
   padding: 24px;
+}
+
+/* Login Overlay */
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.login-modal {
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 48px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(47, 79, 58, 0.3);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-header h1 {
+  margin: 0;
+  font-size: 28px;
+  color: var(--green-dark);
+}
+
+.login-header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.login-form input {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.login-error {
+  color: var(--danger);
+  font-size: 14px;
+  text-align: center;
+  padding: 12px;
+  background: #fff2f2;
+  border-radius: 8px;
+  display: none;
+}
+
+.login-error.show {
+  display: block;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.login-switch {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.login-switch .text-button {
+  padding: 0;
+  font-size: 0.95rem;
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: 24px;
+  color: var(--muted);
+}
+
+/* Permissions Section */
+.permissions-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--beige);
+}
+
+.permissions-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: var(--green-dark);
+}
+
+.permissions-section label {
+  margin-bottom: 12px;
+}
+
+.permissions-section label:last-child {
+  margin-bottom: 0;
+}
+
+/* Employee List */
+.employee-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.employee-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: var(--beige);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.employee-info {
+  display: grid;
+  gap: 4px;
+}
+
+.employee-info strong {
+  font-size: 14px;
+}
+
+.employee-info small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.employee-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.employee-actions button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
 }
 
 @media (max-width: 900px) {
@@ -739,6 +924,25 @@ label {
   border-radius: 8px;
   background: white;
   padding: 16px;
+}
+
+.admin-backup-actions {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  margin-top: 16px;
+}
+
+.admin-backup-actions h3 {
+  margin: 0;
+}
+
+.admin-backup-actions p {
+  margin: 0;
+  color: var(--muted);
 }
 
 .admin-preview small,
