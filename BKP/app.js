@@ -515,7 +515,6 @@ function applySettings() {
   document.documentElement.style.setProperty("--green-dark", settings.colors.greenDark);
   document.documentElement.style.setProperty("--beige", settings.colors.beige);
   document.documentElement.style.setProperty("--ink", settings.colors.ink);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", settings.colors.green);
   document.title = `${settings.companyName} Gestão`;
   document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", settings.companyName);
   document.querySelector("#developerCredit").textContent = settings.developerCredit;
