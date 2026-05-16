@@ -209,6 +209,9 @@
               <label>Cor escura <small>Cor do texto secundário e botões ghost</small><input id="settingGreenDark" type="color" /></label>
               <label>Fundo<input id="settingBeige" type="color" /></label>
               <label>Texto <small>Cor do texto principal</small><input id="settingInk" type="color" /></label>
+              <label>Taxa Débito (%)<input id="taxaDebito" type="number" min="0" step="0.01" /></label>
+              <label>Taxa Crédito (%)<input id="taxaCredito" type="number" min="0" step="0.01" /></label>
+              <label>Desconto Dinheiro/Pix (%)<input id="descontoDinheiroPix" type="number" min="0" step="0.01" /></label>
               <label>Crédito do desenvolvedor<input id="settingDeveloperCredit" readonly /></label>
             </div>
             <div class="admin-preview">
@@ -281,6 +284,8 @@
         <label>Telefone<input id="clientPhone" inputmode="tel" required /></label>
         <label>Observações<textarea id="clientNotes" rows="3"></textarea></label>
         <footer>
+          <button type="button" class="danger-button" id="deleteClient">Excluir cliente</button>
+          <span></span>
           <button type="button" class="ghost-button" data-close="clientModal">Cancelar</button>
           <button class="primary-button" type="submit">Salvar</button>
         </footer>
@@ -299,6 +304,8 @@
         <label>Duração em minutos<input id="serviceDuration" type="number" min="10" step="5" required /></label>
         <label class="checkbox"><input id="serviceActive" type="checkbox" checked /> Ativo</label>
         <footer>
+          <button type="button" class="danger-button" id="deleteService">Excluir serviço</button>
+          <span></span>
           <button type="button" class="ghost-button" data-close="serviceModal">Cancelar</button>
           <button class="primary-button" type="submit">Salvar</button>
         </footer>
@@ -370,8 +377,43 @@
         <label>Créditos de mão<input id="packageMao" type="number" min="0" step="1" value="2" required /></label>
         <label>Validade<input id="packageExpires" type="date" /></label>
         <footer>
+          <button type="button" class="danger-button" id="deletePackage">Excluir pacote</button>
+          <span></span>
           <button type="button" class="ghost-button" data-close="packageModal">Cancelar</button>
           <button class="primary-button" type="submit">Salvar pacote</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="paymentModal">
+      <form method="dialog" class="modal-form" id="paymentForm">
+        <header>
+          <h2>Pagamento</h2>
+          <button value="cancel" class="icon-button" type="button" data-close="paymentModal">×</button>
+        </header>
+        <input type="hidden" id="paymentAppointmentId" />
+        <div class="payment-summary" id="paymentSummary"></div>
+        <label>Forma de pagamento
+          <select id="paymentMethod">
+            <option value="">Selecione</option>
+            <option value="dinheiro">Dinheiro</option>
+            <option value="pix">Pix</option>
+            <option value="debito">Cartão Débito</option>
+            <option value="credito">Cartão Crédito</option>
+          </select>
+        </label>
+        <label>Status do pagamento
+          <select id="paymentStatus">
+            <option value="pago">Pago</option>
+            <option value="pendente">Pendente</option>
+          </select>
+        </label>
+        <label>Data do pagamento<input id="paymentDate" type="date" /></label>
+        <div class="final-value" id="paymentPreview">Líquido: <strong>R$ 0,00</strong></div>
+        <label>Observações<textarea id="paymentNotes" rows="3"></textarea></label>
+        <footer>
+          <button type="button" class="ghost-button" data-close="paymentModal">Cancelar</button>
+          <button class="primary-button" type="submit">Salvar pagamento</button>
         </footer>
       </form>
     </dialog>
@@ -482,6 +524,9 @@
     </dialog>
 
     <input type="file" id="backupFile" accept="application/json,.json" hidden />
+    <div class="payment-alert-bar" id="paymentAlertBar">
+      <div class="payment-alert-track" id="alertMessage"></div>
+    </div>
     <div class="toast" id="toast" role="status"></div>
     <script src="app.js"></script>
   </body>
