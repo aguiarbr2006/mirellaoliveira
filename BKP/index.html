@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#4f7d5a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Rayssa Oliveira" />
-    <title>Rayssa Oliveira Gestão</title>
+    <meta name="apple-mobile-web-app-title" content="Barbara Beauty" />
+    <title>Barbara Beauty Gestão</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -25,8 +25,13 @@
     <div id="loginOverlay" class="login-overlay">
       <div class="login-modal">
         <div class="login-header">
-          <h1>Rayssa Oliveira Gestão</h1>
-          <p>Acesso de Funcionários</p>
+          <div class="login-brand brand">
+            <span class="brand-mark">A</span>
+            <div>
+              <strong>Barbara Beauty</strong>
+              <small>Acesso de Funcionários</small>
+            </div>
+          </div>
         </div>
         <form id="loginForm" class="login-form">
           <label id="loginIdentifierField">
@@ -48,10 +53,10 @@
     <div class="app-shell" id="appShell" style="display: none;">
       <aside class="sidebar">
         <div class="brand">
-          <span class="brand-mark">N</span>
+          <span class="brand-mark">A</span>
           <div>
-            <strong>Rayssa Oliveira</strong>
-            <small>Nail designer</small>
+            <strong>Barbara Beauty</strong>
+            <small>Administrador</small>
           </div>
         </div>
         <nav class="nav" aria-label="Navegação principal">
@@ -236,16 +241,16 @@
               <label>Cor escura <small>Cor do texto secundário e botões ghost</small><input id="settingGreenDark" type="color" /></label>
               <label>Fundo<input id="settingBeige" type="color" /></label>
               <label>Texto <small>Cor do texto principal</small><input id="settingInk" type="color" /></label>
+              <label>Cor da barra de alerta<input id="settingAlert" type="color" /></label>
               <label>Taxa Débito (%)<input id="taxaDebito" type="number" min="0" step="0.01" /></label>
               <label>Taxa Crédito (%)<input id="taxaCredito" type="number" min="0" step="0.01" /></label>
-              <label>Desconto Dinheiro/Pix (%)<input id="descontoDinheiroPix" type="number" min="0" step="0.01" /></label>
               <label>Crédito do desenvolvedor<input id="settingDeveloperCredit" readonly /></label>
             </div>
             <div class="admin-preview">
-              <span class="brand-mark" id="adminLogoPreview">R</span>
+              <span class="brand-mark" id="adminLogoPreview">A</span>
               <div>
-                <strong id="adminNamePreview">Rayssa Oliveira</strong>
-                <small id="adminSubtitlePreview">Nail designer</small>
+                <strong id="adminNamePreview">Barbara Beauty</strong>
+                <small id="adminSubtitlePreview">Administrador</small>
               </div>
               <button class="primary-button" type="button">Botão principal</button>
               <button class="ghost-button" type="button">Botão secundário</button>
@@ -311,26 +316,11 @@
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
           <span class="nav-label">Admin</span>
         </button>
-      </nav>
-      <button class="primary-button mobile-more" id="mobileMoreButton">Mais</button>
-      <div class="mobile-more-menu" id="mobileMoreMenu">
-        <button class="nav-item" data-page="pacotes">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
-          <span class="nav-label">Pacotes</span>
-        </button>
-        <button class="nav-item" data-page="servicos">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.275 1.275L3 12l5.8 1.9a2 2 0 0 1 1.275 1.275L12 21l1.9-5.8a2 2 0 0 1 1.275-1.275L21 12l-5.8-1.9a2 2 0 0 1-1.275-1.275L12 3Z"/></svg></span>
-          <span class="nav-label">Serviços</span>
-        </button>
         <button class="nav-item" data-page="funcionarios">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
           <span class="nav-label">Funcionários</span>
         </button>
-        <button class="nav-item" data-page="admin">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
-          <span class="nav-label">Admin</span>
-        </button>
-      </div>
+      </nav>
     </div>
 
     <dialog id="clientModal">
@@ -383,11 +373,8 @@
           <label>Cliente<select id="appointmentClient" required></select></label>
           <label class="checkbox"><input id="usePackage" type="checkbox" /> Usar pacote da cliente</label>
           <label class="package-field">Pacote<select id="appointmentPackage"></select></label>
-          <label class="package-field">Crédito usado
-            <select id="packageCreditType">
-              <option value="peMao">Pé e mão</option>
-              <option value="mao">Mão</option>
-            </select>
+          <label class="package-field">Serviço do pacote
+            <select id="packageCreditType"></select>
           </label>
           <div class="form-help package-field" id="packageHelp">Cadastre um pacote para a cliente antes de usar esta opção.</div>
           <label class="service-field">Serviço 1<select id="appointmentService"></select></label>
@@ -395,14 +382,33 @@
           <label>Início<input id="appointmentStart" type="datetime-local" required /></label>
           <label>Fim<input id="appointmentEnd" type="datetime-local" required /></label>
           <label class="payment-field">Valor<input id="appointmentPrice" type="number" min="0" step="0.01" /></label>
-          <label class="payment-field">Desconto
-            <select id="discountType">
-              <option value="nenhum">Nenhum</option>
-              <option value="valor">Valor fixo</option>
-              <option value="porcentagem">Porcentagem</option>
+          <input id="discountType" type="hidden" value="nenhum" />
+          <input id="discountValue" type="hidden" value="0" />
+          <label class="payment-field">Forma de pagamento
+            <select id="appointmentPaymentMethod">
+              <option value="">Pendente</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">Pix</option>
+              <option value="debito">Cartão Débito</option>
+              <option value="credito">Cartão Crédito</option>
             </select>
           </label>
-          <label class="payment-field">Valor desconto<input id="discountValue" type="number" min="0" step="0.01" value="0" /></label>
+          <label class="payment-field">Status do pagamento
+            <select id="appointmentPaymentStatus">
+              <option value="pendente">Pendente</option>
+              <option value="pago">Pago</option>
+            </select>
+          </label>
+          <div class="form-grid payment-discount-fields hidden" id="appointmentPaymentDiscountFields">
+            <label>Desconto no pagamento
+              <select id="appointmentPaymentDiscountType">
+                <option value="nenhum">Nenhum</option>
+                <option value="valor">Valor fixo</option>
+                <option value="porcentagem">Porcentagem</option>
+              </select>
+            </label>
+            <label>Valor do desconto<input id="appointmentPaymentDiscountValue" type="number" min="0" step="0.01" value="0" /></label>
+          </div>
           <label>Status
             <select id="appointmentStatus">
               <option>Agendado</option>
@@ -413,6 +419,7 @@
           </label>
         </div>
         <div class="final-value">Valor final: <strong id="finalValuePreview">R$ 0,00</strong></div>
+        <div class="final-value" id="appointmentPaymentPreview">Pagamento pendente · líquido previsto: <strong>R$ 0,00</strong></div>
         <label>Observações<textarea id="appointmentNotes" rows="3"></textarea></label>
         <footer>
           <button type="button" class="danger-button" id="deleteAppointment">Excluir</button>
@@ -433,8 +440,7 @@
         <label>Cliente<select id="packageClient" required></select></label>
         <label>Nome do pacote<input id="packageName" value="Pacote mensal" required /></label>
         <label>Valor pago<input id="packageValue" type="number" min="0" step="0.01" required /></label>
-        <label>Créditos de pé e mão<input id="packagePeMao" type="number" min="0" step="1" value="2" required /></label>
-        <label>Créditos de mão<input id="packageMao" type="number" min="0" step="1" value="2" required /></label>
+        <div class="package-services" id="packageServices"></div>
         <label>Validade<input id="packageExpires" type="date" /></label>
         <footer>
           <button type="button" class="danger-button" id="deletePackage">Excluir pacote</button>
@@ -462,6 +468,16 @@
             <option value="credito">Cartão Crédito</option>
           </select>
         </label>
+        <div class="form-grid payment-discount-fields hidden" id="paymentDiscountFields">
+          <label>Desconto
+            <select id="paymentDiscountType">
+              <option value="nenhum">Nenhum</option>
+              <option value="valor">Valor fixo</option>
+              <option value="porcentagem">Porcentagem</option>
+            </select>
+          </label>
+          <label>Valor do desconto<input id="paymentDiscountValue" type="number" min="0" step="0.01" value="0" /></label>
+        </div>
         <label>Status do pagamento
           <select id="paymentStatus">
             <option value="pago">Pago</option>
