@@ -94,6 +94,21 @@
           <button class="secondary-action" type="submit">Salvar dados</button>
         </form>
 
+        <details class="password-panel">
+          <summary>Trocar senha</summary>
+          <form id="passwordForm" class="stack-form">
+            <label>
+              Senha atual
+              <input id="currentPassword" type="password" autocomplete="current-password" />
+            </label>
+            <label>
+              Nova senha
+              <input id="newPassword" type="password" autocomplete="new-password" minlength="6" />
+            </label>
+            <button class="secondary-action" type="submit">Atualizar senha</button>
+          </form>
+        </details>
+
         <div class="panel-heading booking-heading">
           <p class="eyebrow">Solicitar horario</p>
           <h2>Novo agendamento</h2>

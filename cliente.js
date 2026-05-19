@@ -46,6 +46,10 @@ function init() {
   if (!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG);
   db = firebase.firestore();
   docRef = db.doc(window.FIREBASE_DOC_PATH || "sistemas/firebase");
+  firebase.auth().getRedirectResult().catch((error) => {
+    console.error(error);
+    setAuthMessage(authErrorMessage(error));
+  });
 
   firebase.auth().onAuthStateChanged((user) => {
     currentUser = user;
@@ -71,6 +75,7 @@ function bindEvents() {
     });
   });
   document.querySelector("#profileForm").addEventListener("submit", saveClientProfile);
+  document.querySelector("#passwordForm").addEventListener("submit", updateClientPassword);
   document.querySelector("#bookingForm").addEventListener("submit", requestAppointment);
   document.querySelector("#bookingService").addEventListener("change", () => {
     updateServiceSummary();
@@ -86,7 +91,7 @@ async function signInWithGoogle() {
   setAuthMessage("");
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
-    await firebase.auth().signInWithPopup(provider);
+    await firebase.auth().signInWithRedirect(provider);
   } catch (error) {
     console.error(error);
     setAuthMessage(authErrorMessage(error));
@@ -120,6 +125,7 @@ function authErrorMessage(error) {
   if (error.code === "auth/wrong-password") return "Senha incorreta.";
   if (error.code === "auth/weak-password") return "A senha precisa ter pelo menos 6 caracteres.";
   if (error.code === "auth/configuration-not-found") return "Habilite Email/Senha e Google no Firebase Authentication.";
+  if (error.code === "auth/requires-recent-login") return "Entre novamente e tente trocar a senha de novo.";
   return error.message || "Nao foi possivel autenticar.";
 }
 
@@ -190,6 +196,31 @@ async function saveClientProfile(event) {
   } catch (error) {
     console.error(error);
     toast("Nao foi possivel salvar seus dados.");
+  }
+}
+
+async function updateClientPassword(event) {
+  event.preventDefault();
+  if (!currentUser) return;
+  const currentPassword = document.querySelector("#currentPassword").value;
+  const newPassword = document.querySelector("#newPassword").value;
+  const hasPasswordProvider = currentUser.providerData.some((provider) => provider.providerId === "password");
+  if (!hasPasswordProvider) {
+    toast("Sua conta entrou pelo Google. A senha deve ser alterada na sua conta Google.");
+    return;
+  }
+  if (!currentPassword || !newPassword) return toast("Informe a senha atual e a nova senha.");
+  if (newPassword.length < 6) return toast("A nova senha precisa ter pelo menos 6 caracteres.");
+
+  try {
+    const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPassword);
+    await currentUser.reauthenticateWithCredential(credential);
+    await currentUser.updatePassword(newPassword);
+    document.querySelector("#passwordForm").reset();
+    toast("Senha atualizada.");
+  } catch (error) {
+    console.error(error);
+    toast(authErrorMessage(error));
   }
 }
 

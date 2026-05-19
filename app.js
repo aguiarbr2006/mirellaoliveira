@@ -278,6 +278,8 @@ async function createDefaultAdminAccount() {
     try {
       await firebase.auth().signInWithEmailAndPassword(adminEmail, adminPassword);
       console.log("Conta admin já existe e está ativa");
+      await saveLoginAliases("admin", adminName, adminEmail);
+      await ensureAllLoginAliases();
       await firebase.auth().signOut(); // Fazer logout para permitir login normal
       return;
     } catch (loginError) {
@@ -305,6 +307,8 @@ async function createDefaultAdminAccount() {
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
+        await saveLoginAliases("admin", adminName, adminEmail);
+        await ensureAllLoginAliases();
 
         console.log("Conta admin criada com sucesso");
         await firebase.auth().signOut();
@@ -343,6 +347,41 @@ function showLogin() {
   applySettings();
   document.querySelector("#appShell").style.display = "none";
   document.querySelector("#loginOverlay").style.display = "flex";
+}
+
+function loginAliasKey(value) {
+  return normalize(value).replace(/[^a-z0-9._-]/g, "");
+}
+
+async function saveLoginAliases(username, name, email) {
+  if (!remoteDb) remoteDb = firebase.firestore();
+  const batch = remoteDb.batch();
+  const aliases = [username, name]
+    .map(loginAliasKey)
+    .filter(Boolean);
+  if (!aliases.length) return;
+  aliases.forEach((alias) => {
+    batch.set(
+      remoteDb.collection("loginAliases").doc(alias),
+      {
+        email,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+  await batch.commit();
+}
+
+async function ensureAllLoginAliases() {
+  if (!remoteDb) remoteDb = firebase.firestore();
+  const snapshot = await remoteDb.collection("users").get();
+  const saves = [];
+  snapshot.forEach((doc) => {
+    const user = doc.data();
+    if (user?.email) saves.push(saveLoginAliases(user.username || "", user.name || "", user.email));
+  });
+  await Promise.all(saves);
 }
 
 function showApp() {
@@ -389,19 +428,8 @@ async function resolveLoginEmail(identifier) {
 
   try {
     if (!remoteDb) remoteDb = firebase.firestore();
-    
-    // First try username
-    let snapshot = await remoteDb.collection("users").where("username", "==", identifier).limit(1).get();
-    if (!snapshot.empty) {
-      return snapshot.docs[0].data().email;
-    }
-    
-    // Then try name
-    snapshot = await remoteDb.collection("users").where("name", "==", identifier).limit(1).get();
-    if (!snapshot.empty) {
-      return snapshot.docs[0].data().email;
-    }
-    
+    const aliasDoc = await remoteDb.collection("loginAliases").doc(loginAliasKey(identifier)).get();
+    if (aliasDoc.exists && aliasDoc.data()?.email) return aliasDoc.data().email;
     throw new Error("Usuário não encontrado");
   } catch (error) {
     throw { code: "auth/user-not-found", message: "Usuário não encontrado." };
@@ -2382,6 +2410,7 @@ function bindForms() {
           permissions,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
+        await saveLoginAliases(username, name, email);
         if (password) {
           // Update password if provided
           const user = await firebase.auth().getUser(employeeId);
@@ -2399,6 +2428,7 @@ function bindForms() {
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
+        await saveLoginAliases(username, name, email);
       }
 
       document.querySelector("#employeeForm").reset();
