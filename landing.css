@@ -197,7 +197,8 @@ h3 {
 }
 
 .hero-actions,
-.cta-section {
+.cta-section,
+.cta-actions {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -236,6 +237,15 @@ h3 {
 
 .secondary-action:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+.secondary-action.dark {
+  color: var(--sage-dark);
+  border-color: rgba(49, 77, 58, 0.38);
+}
+
+.secondary-action.dark:hover {
+  background: rgba(49, 77, 58, 0.08);
 }
 
 .intro-band,

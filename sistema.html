@@ -165,6 +165,7 @@
             <input type="month" id="agendaMonth" />
             <select id="agendaStatus">
               <option value="todos">Todos os status</option>
+              <option>Pendente confirmação</option>
               <option>Agendado</option>
               <option>Confirmado</option>
               <option>Concluído</option>
@@ -412,6 +413,7 @@
           </div>
           <label>Status
             <select id="appointmentStatus">
+              <option>Pendente confirmação</option>
               <option>Agendado</option>
               <option>Confirmado</option>
               <option>Concluído</option>
@@ -426,6 +428,7 @@
           <button type="button" class="danger-button" id="deleteAppointment">Excluir</button>
           <span></span>
           <button type="button" class="ghost-button" data-close="appointmentModal">Cancelar</button>
+          <button class="ghost-button" type="submit" id="saveAppointmentWhatsapp">Salvar e enviar WhatsApp</button>
           <button class="primary-button" type="submit">Salvar</button>
         </footer>
       </form>

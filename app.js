@@ -36,10 +36,12 @@ let remoteDocRef = null;
 let remoteReady = false;
 let applyingRemoteState = false;
 let pendingRemoteSave = null;
+let remoteUnsubscribe = null;
 let deferredInstallPrompt = null;
 let currentUser = null;
 let userPermissions = {};
 let afterPaymentSaveCallback = null;
+const APPOINTMENT_STATUSES = ["Pendente confirmação", "Agendado", "Confirmado", "Concluído", "Cancelado"];
 
 const pages = {
   dashboard: {
@@ -251,10 +253,12 @@ async function initAuth() {
       if (user) {
         currentUser = user;
         await loadUserPermissions(user.uid);
+        initRemoteSync();
         showApp();
         renderAll();
       } else {
         currentUser = null;
+        stopRemoteSync();
         showLogin();
       }
     });
@@ -434,13 +438,15 @@ function initRemoteSync() {
     console.info("Firebase não configurado. Usando armazenamento local deste navegador.");
     return;
   }
+  if (remoteUnsubscribe) return;
 
   try {
     if (!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG);
+    if (!firebase.auth().currentUser) return;
     remoteDb = firebase.firestore();
     remoteDocRef = remoteDb.doc(window.FIREBASE_DOC_PATH || "sistemas/firebase");
 
-    remoteDocRef.onSnapshot(
+    remoteUnsubscribe = remoteDocRef.onSnapshot(
       (snapshot) => {
         if (!snapshot.exists) {
           remoteReady = true;
@@ -613,6 +619,15 @@ function renderAdminSettings() {
   } else {
     preview.outerHTML = `<span class="brand-mark" id="adminLogoPreview">${escapeHtml(settings.logoText || companyName().slice(0, 1).toUpperCase())}</span>`;
   }
+}
+
+function stopRemoteSync() {
+  if (remoteUnsubscribe) {
+    remoteUnsubscribe();
+    remoteUnsubscribe = null;
+  }
+  remoteDocRef = null;
+  remoteReady = false;
 }
 
 function toDateInput(date) {
@@ -1260,7 +1275,7 @@ function appointmentCard(item) {
         <button class="ghost-button" data-payment-appointment="${item.id}">Pagamento</button>
         <button class="ghost-button" data-whatsapp-appointment="${item.id}">WhatsApp</button>
         <select data-status-appointment="${item.id}" aria-label="Alterar status">
-          ${["Agendado", "Confirmado", "Concluído", "Cancelado"].map((status) => `<option ${status === item.status ? "selected" : ""}>${status}</option>`).join("")}
+          ${APPOINTMENT_STATUSES.map((status) => `<option ${status === item.status ? "selected" : ""}>${status}</option>`).join("")}
         </select>
       </div>
     </article>
@@ -1881,6 +1896,7 @@ function savePaymentAndClose() {
 function updateAppointmentStatus(appointmentId, status) {
   const appointment = state.agendamentos.find((a) => a.id === appointmentId);
   if (!appointment) return;
+  const previousStatus = appointment.status;
   if (status === "Concluído" && appointment.usarPacote && appointment.pacoteId && packageAvailability(appointment.pacoteId, appointment.servicoCreditoPacoteId || appointment.tipoCreditoPacote, appointment.id) <= 0) {
     renderAppointments();
     toast(`Este pacote não tem crédito disponível de ${packageCreditLabel(appointment.servicoCreditoPacoteId || appointment.tipoCreditoPacote)}.`);
@@ -1898,9 +1914,12 @@ function updateAppointmentStatus(appointmentId, status) {
   save();
   renderAll();
   toast("Status atualizado.");
+  if (appointment.origemCliente && previousStatus === "Pendente confirmação" && status === "Confirmado") {
+    sendAppointmentWhatsapp(appointment.id, "confirmacao");
+  }
 }
 
-function sendAppointmentWhatsapp(appointmentId) {
+function sendAppointmentWhatsapp(appointmentId, mode = "comprovante") {
   const appointment = state.agendamentos.find((item) => item.id === appointmentId);
   if (!appointment) return;
   const phone = appointment.telefone.replace(/\D/g, "");
@@ -1914,21 +1933,36 @@ function sendAppointmentWhatsapp(appointmentId) {
   const paymentLabel = appointment.usarPacote
     ? `Pacote pré-pago - ${packageCreditLabel(appointment.servicoCreditoPacoteId || appointment.tipoCreditoPacote)}`
     : appointment.statusPagamento === "pago" ? "Pago" : "Pendente";
-  const message = [
-    `Olá, ${appointment.nomeCliente}!`,
-    "",
-    "Segue seu comprovante de agendamento:",
-    `Empresa: ${companyName()}`,
-    `Serviço: ${appointmentServiceName(appointment)}`,
-    `Data: ${start.toLocaleDateString("pt-BR")}`,
-    `Chegada: ${start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} com 15 minutos de tolerância para atraso`,
-    `Saída: ${end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
-    `Valor: ${appointment.usarPacote ? "Pacote pré-pago" : money(appointment.valorFinal)}`,
-    `Pagamento: ${paymentLabel}`,
-    `Status: ${appointment.status}`,
-    "",
-    "Obrigada pela preferência!",
-  ].join("\n");
+  const message =
+    mode === "confirmacao"
+      ? [
+          `Olá, ${appointment.nomeCliente}!`,
+          "",
+          "Seu agendamento foi confirmado:",
+          `Empresa: ${companyName()}`,
+          `Serviço: ${appointmentServiceName(appointment)}`,
+          `Data: ${start.toLocaleDateString("pt-BR")}`,
+          `Chegada: ${start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} com 15 minutos de tolerância para atraso`,
+          `Saída: ${end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+          `Valor: ${appointment.usarPacote ? "Pacote pré-pago" : money(appointment.valorFinal)}`,
+          "",
+          "Obrigada pela preferência!",
+        ].join("\n")
+      : [
+          `Olá, ${appointment.nomeCliente}!`,
+          "",
+          "Segue seu comprovante de agendamento:",
+          `Empresa: ${companyName()}`,
+          `Serviço: ${appointmentServiceName(appointment)}`,
+          `Data: ${start.toLocaleDateString("pt-BR")}`,
+          `Chegada: ${start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} com 15 minutos de tolerância para atraso`,
+          `Saída: ${end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+          `Valor: ${appointment.usarPacote ? "Pacote pré-pago" : money(appointment.valorFinal)}`,
+          `Pagamento: ${paymentLabel}`,
+          `Status: ${appointment.status}`,
+          "",
+          "Obrigada pela preferência!",
+        ].join("\n");
   window.open(`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
 }
 
@@ -1983,7 +2017,7 @@ function escapeHtml(value) {
 }
 
 function statusClass(status) {
-  return normalize(status).replace("í", "i");
+  return normalize(status).replace("í", "i").replace(/\s+/g, "-");
 }
 
 function isAppointmentLate(appointment) {
@@ -1992,6 +2026,7 @@ function isAppointmentLate(appointment) {
 
 function getStatusIcon(appointment) {
   if (appointment.status === "Cancelado") return "⚫";
+  if (appointment.status === "Pendente confirmação") return "🔵";
   if (isAppointmentLate(appointment)) return "🔴";
   if (appointment.statusPagamento === "pago") return "🟢";
   if (appointment.status === "Concluído" && appointment.statusPagamento === "pendente") return "🔴";
@@ -2022,9 +2057,10 @@ function updatePaymentAlert() {
   if (!alertDiv || !alertMessage) return;
   const alerts = state.agendamentos
     .filter((appointment) => {
+      const pendingConfirmation = appointment.status === "Pendente confirmação";
       const paymentPending = appointment.status === "Concluído" && appointment.statusPagamento === "pendente";
       const appointmentLate = isAppointmentLate(appointment);
-      return paymentPending || appointmentLate;
+      return pendingConfirmation || paymentPending || appointmentLate;
     })
     .sort((a, b) => a.dataHoraInicio.localeCompare(b.dataHoraInicio));
 
@@ -2036,9 +2072,11 @@ function updatePaymentAlert() {
 
   alertMessage.innerHTML = alerts
     .map((appointment) => {
-      const text = isAppointmentLate(appointment)
-        ? `⏰ ${appointment.nomeCliente} - agendamento atrasado (${parseDate(appointment.dataHoraInicio).toLocaleDateString("pt-BR")} ${parseDate(appointment.dataHoraInicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })})`
-        : `⚠️ ${appointment.nomeCliente} - pagamento pendente`;
+      const text = appointment.status === "Pendente confirmação"
+        ? `🔵 ${appointment.nomeCliente} - aguardando confirmação (${parseDate(appointment.dataHoraInicio).toLocaleDateString("pt-BR")} ${parseDate(appointment.dataHoraInicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })})`
+        : isAppointmentLate(appointment)
+          ? `⏰ ${appointment.nomeCliente} - agendamento atrasado (${parseDate(appointment.dataHoraInicio).toLocaleDateString("pt-BR")} ${parseDate(appointment.dataHoraInicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })})`
+          : `⚠️ ${appointment.nomeCliente} - pagamento pendente`;
       return `<button type="button" data-edit-appointment="${appointment.id}">${escapeHtml(text)}</button>`;
     })
     .join(`<span class="alert-separator">|</span>`);
@@ -2143,6 +2181,7 @@ function bindForms() {
 
   document.querySelector("#appointmentForm").addEventListener("submit", (event) => {
     event.preventDefault();
+    const sendWhatsappAfterSave = event.submitter?.id === "saveAppointmentWhatsapp";
     const appointmentId = document.querySelector("#appointmentId").value;
     const client = state.clientes.find((c) => c.id === document.querySelector("#appointmentClient").value);
     const service = state.servicos.find((s) => s.id === document.querySelector("#appointmentService").value);
@@ -2187,6 +2226,9 @@ function bindForms() {
       dataHoraFim: end,
       status: document.querySelector("#appointmentStatus").value,
       observacoes: document.querySelector("#appointmentNotes").value.trim(),
+      origemCliente: existing?.origemCliente || false,
+      clienteAuthUid: existing?.clienteAuthUid || "",
+      emailCliente: existing?.emailCliente || "",
       usarPacote,
       pacoteId: usarPacote ? pacoteId : "",
       servicoCreditoPacoteId: usarPacote ? servicoCreditoPacoteId : "",
@@ -2239,6 +2281,9 @@ function bindForms() {
     document.querySelector("#appointmentModal").close();
     renderAll();
     toast("Agendamento salvo.");
+    if (sendWhatsappAfterSave) {
+      sendAppointmentWhatsapp(savedAppointment.id, savedAppointment.status === "Confirmado" ? "confirmacao" : "comprovante");
+    }
   });
 
   document.querySelector("#financeForm").addEventListener("submit", (event) => {
