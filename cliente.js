@@ -46,10 +46,6 @@ function init() {
   if (!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG);
   db = firebase.firestore();
   docRef = db.doc(window.FIREBASE_DOC_PATH || "sistemas/firebase");
-  firebase.auth().getRedirectResult().catch((error) => {
-    console.error(error);
-    setAuthMessage(authErrorMessage(error));
-  });
 
   firebase.auth().onAuthStateChanged((user) => {
     currentUser = user;
@@ -82,16 +78,18 @@ function bindEvents() {
     renderAvailableSlots();
   });
   document.querySelector("#bookingDate").addEventListener("change", renderAvailableSlots);
-  document.querySelector("#bookingTime").addEventListener("change", renderAvailableSlots);
   document.querySelector("#logoutButton").addEventListener("click", () => firebase.auth().signOut());
   document.querySelector("#bookingDate").min = new Date().toISOString().slice(0, 10);
+  document.querySelector("#closeBookingDialog")?.addEventListener("click", () => {
+    document.querySelector("#bookingConfirmDialog").close();
+  });
 }
 
 async function signInWithGoogle() {
   setAuthMessage("");
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
-    await firebase.auth().signInWithRedirect(provider);
+    await firebase.auth().signInWithPopup(provider);
   } catch (error) {
     console.error(error);
     setAuthMessage(authErrorMessage(error));
@@ -137,6 +135,7 @@ function subscribeState() {
         clientes: Array.isArray(remoteState.clientes) ? remoteState.clientes : [],
         servicos: Array.isArray(remoteState.servicos) ? remoteState.servicos : [],
         agendamentos: Array.isArray(remoteState.agendamentos) ? remoteState.agendamentos : [],
+        settings: remoteState.settings || {},
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       syncClientFromState();
@@ -314,7 +313,7 @@ function renderAvailableSlots() {
     return;
   }
 
-  slotsEl.innerHTML = `<strong>Horarios disponiveis</strong><div class="slot-grid">
+  slotsEl.innerHTML = `<strong>Horarios disponiveis — clique para selecionar</strong><div class="slot-grid">
     ${slots
       .map(
         (time) =>
@@ -368,7 +367,8 @@ async function requestAppointment(event) {
   const notes = document.querySelector("#bookingNotes").value.trim();
   if (!name || !phone) return toast("Salve seu nome e telefone antes de agendar.");
   if (!service) return toast("Selecione um servico ativo.");
-  if (!date || !time) return toast("Escolha data e horario.");
+  if (!date) return toast("Escolha uma data.");
+  if (!time) return toast("Selecione um horario disponivel clicando nos botoes acima.");
 
   const start = new Date(`${date}T${time}`);
   if (Number.isNaN(start.getTime()) || start < new Date()) return toast("Escolha um horario futuro.");
@@ -447,16 +447,65 @@ async function requestAppointment(event) {
       if (conflict) throw new Error("Este horario ja esta ocupado. Escolha outro horario.");
       nextState.agendamentos.push(appointment);
       transaction.set(docRef, { state: nextState, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+
+      // Mostrar dialog de confirmação com botão WhatsApp
+      showBookingConfirmDialog({
+        clientName: client.nome,
+        serviceName: service.nome,
+        date,
+        time,
+        endTime: toTimeInput(end),
+        value: service.valorPadrao,
+        notes,
+      });
     });
 
     document.querySelector("#bookingForm").reset();
+    document.querySelector("#bookingTime").value = "";
     updateServiceSummary();
     renderAvailableSlots();
-    toast("Solicitacao enviada. Aguarde a confirmacao.");
   } catch (error) {
     console.error(error);
     toast(error.message || "Nao foi possivel solicitar o agendamento.");
   }
+}
+
+function showBookingConfirmDialog({ clientName, serviceName, date, time, endTime, value, notes }) {
+  const dialog = document.querySelector("#bookingConfirmDialog");
+  if (!dialog) return;
+
+  const dateFormatted = new Date(`${date}T00:00`).toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+  document.querySelector("#dialogDetails").innerHTML = `
+    <div class="dialog-detail-row"><span>Serviço</span><strong>${escapeHtml(serviceName)}</strong></div>
+    <div class="dialog-detail-row"><span>Data</span><strong>${dateFormatted}</strong></div>
+    <div class="dialog-detail-row"><span>Horário</span><strong>${time} às ${endTime}</strong></div>
+    <div class="dialog-detail-row"><span>Valor</span><strong>${money(value)}</strong></div>
+    ${notes ? `<div class="dialog-detail-row"><span>Obs.</span><strong>${escapeHtml(notes)}</strong></div>` : ""}
+  `;
+
+  // Montar link WhatsApp com telefone da empresa
+  const companyPhone = (state.settings?.telefoneContato || "").replace(/\D/g, "");
+  const whatsappBtn = document.querySelector("#dialogWhatsapp");
+  if (companyPhone) {
+    const waPhone = companyPhone.startsWith("55") ? companyPhone : `55${companyPhone}`;
+    const msg = [
+      `Olá! Gostaria de confirmar meu agendamento:`,
+      ``,
+      `👤 Nome: ${clientName}`,
+      `💅 Serviço: ${serviceName}`,
+      `📅 Data: ${dateFormatted}`,
+      `🕐 Horário: ${time} às ${endTime}`,
+      `💰 Valor: ${money(value)}`,
+      notes ? `📝 Obs.: ${notes}` : "",
+    ].filter(Boolean).join("\n");
+    whatsappBtn.href = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`;
+    whatsappBtn.style.display = "inline-flex";
+  } else {
+    whatsappBtn.style.display = "none";
+  }
+
+  dialog.showModal();
 }
 
 function renderClientAppointments() {

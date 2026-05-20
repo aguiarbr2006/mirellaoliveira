@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
   subtitle: "Nail designer",
   logoText: "B",
   logoImage: "",
+  telefoneContato: "",
   developerCredit: "Desenvolvido por Rafael Aguiar Ribeiro · Instagram @aguiar.3d",
   colors: {
     green: "#4f7d5a",
