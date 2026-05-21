@@ -279,6 +279,106 @@
               <button class="primary-button" type="submit">Salvar configurações</button>
             </footer>
           </form>
+
+          <!-- Editor do site público -->
+          <div class="panel admin-form" id="landingEditorPanel">
+            <div class="panel-title">
+              <h2>Editar site público</h2>
+              <a class="ghost-button" href="index.html" target="_blank" rel="noopener">Ver site</a>
+            </div>
+
+            <!-- Hero -->
+            <details class="landing-section-editor" open>
+              <summary>Seção Hero (topo)</summary>
+              <div class="form-grid">
+                <label>Eyebrow (texto pequeno)<input id="lc_heroEyebrow" /></label>
+                <label>Título principal<input id="lc_heroTitle" /></label>
+                <label style="grid-column:1/-1">Descrição<textarea id="lc_heroDescription" rows="3"></textarea></label>
+                <label style="grid-column:1/-1">Imagem de fundo (URL)<input id="lc_heroImage" placeholder="https://..." /></label>
+              </div>
+            </details>
+
+            <!-- Destaques -->
+            <details class="landing-section-editor">
+              <summary>Destaques (3 colunas)</summary>
+              <div class="form-grid">
+                <label>Título 1<input id="lc_highlight1Title" /></label>
+                <label>Texto 1<input id="lc_highlight1Text" /></label>
+                <label>Título 2<input id="lc_highlight2Title" /></label>
+                <label>Texto 2<input id="lc_highlight2Text" /></label>
+                <label>Título 3<input id="lc_highlight3Title" /></label>
+                <label>Texto 3<input id="lc_highlight3Text" /></label>
+              </div>
+            </details>
+
+            <!-- Serviços -->
+            <details class="landing-section-editor">
+              <summary>Seção Serviços</summary>
+              <div class="form-grid">
+                <label>Eyebrow<input id="lc_servicesEyebrow" /></label>
+                <label>Título<input id="lc_servicesTitle" /></label>
+                <label>Serviço 1 — Título<input id="lc_service1Title" /></label>
+                <label>Serviço 1 — Texto<input id="lc_service1Text" /></label>
+                <label>Serviço 2 — Título<input id="lc_service2Title" /></label>
+                <label>Serviço 2 — Texto<input id="lc_service2Text" /></label>
+                <label>Serviço 3 — Título<input id="lc_service3Title" /></label>
+                <label>Serviço 3 — Texto<input id="lc_service3Text" /></label>
+                <label>Serviço 4 — Título<input id="lc_service4Title" /></label>
+                <label>Serviço 4 — Texto<input id="lc_service4Text" /></label>
+              </div>
+            </details>
+
+            <!-- Split section -->
+            <details class="landing-section-editor">
+              <summary>Seção Como Funciona</summary>
+              <div class="form-grid">
+                <label>Eyebrow<input id="lc_splitEyebrow" /></label>
+                <label>Título<input id="lc_splitTitle" /></label>
+                <label style="grid-column:1/-1">Texto<textarea id="lc_splitText" rows="3"></textarea></label>
+                <label style="grid-column:1/-1">Imagem (URL)<input id="lc_splitImage" placeholder="https://..." /></label>
+              </div>
+            </details>
+
+            <!-- Portfolio -->
+            <details class="landing-section-editor">
+              <summary>Portfolio (fotos)</summary>
+              <div class="form-grid">
+                <label>Eyebrow<input id="lc_portfolioEyebrow" /></label>
+                <label>Título<input id="lc_portfolioTitle" /></label>
+              </div>
+              <div class="portfolio-photos-editor" id="portfolioPhotosEditor"></div>
+              <button class="ghost-button" type="button" id="addPortfolioPhoto" style="margin-top:10px">+ Adicionar foto</button>
+            </details>
+
+            <!-- Feed -->
+            <details class="landing-section-editor">
+              <summary>Feed (publicações)</summary>
+              <label>Título da seção<input id="lc_feedTitle" /></label>
+              <div class="feed-posts-editor" id="feedPostsEditor" style="margin-top:12px"></div>
+              <button class="ghost-button" type="button" id="addFeedPost" style="margin-top:10px">+ Nova publicação</button>
+            </details>
+
+            <!-- Cuidados -->
+            <details class="landing-section-editor">
+              <summary>Seção Cuidados</summary>
+              <div class="form-grid">
+                <label>Eyebrow<input id="lc_careEyebrow" /></label>
+                <label>Título<input id="lc_careTitle" /></label>
+                <label>Dica 1 — Título<input id="lc_care1Title" /></label>
+                <label>Dica 1 — Texto<input id="lc_care1Text" /></label>
+                <label>Dica 2 — Título<input id="lc_care2Title" /></label>
+                <label>Dica 2 — Texto<input id="lc_care2Text" /></label>
+                <label>Dica 3 — Título<input id="lc_care3Title" /></label>
+                <label>Dica 3 — Texto<input id="lc_care3Text" /></label>
+                <label>Dica 4 — Título<input id="lc_care4Title" /></label>
+                <label>Dica 4 — Texto<input id="lc_care4Text" /></label>
+              </div>
+            </details>
+
+            <footer class="admin-actions">
+              <button class="primary-button" type="button" id="saveLandingContent">Salvar site</button>
+            </footer>
+          </div>
         </section>
 
         <section class="page" id="funcionariosPage">

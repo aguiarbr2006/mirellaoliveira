@@ -155,6 +155,7 @@ function loadState() {
         dataCadastro: now.toISOString(),
       },
     ],
+    landingContent: {},
   };
 }
 
@@ -204,6 +205,7 @@ function serializableState() {
     agendamentos: state.agendamentos,
     pacotes: state.pacotes,
     financeiro: state.financeiro,
+    landingContent: state.landingContent || {},
   }));
 }
 
@@ -214,6 +216,7 @@ function replaceState(nextState) {
   state.agendamentos = Array.isArray(nextState.agendamentos) ? nextState.agendamentos : [];
   state.pacotes = Array.isArray(nextState.pacotes) ? nextState.pacotes : [];
   state.financeiro = Array.isArray(nextState.financeiro) ? nextState.financeiro : [];
+  state.landingContent = nextState.landingContent || {};
   migrateState();
 }
 
@@ -541,6 +544,7 @@ function migrateState() {
   state.agendamentos ||= [];
   state.financeiro ||= [];
   state.pacotes ||= [];
+  state.landingContent ||= {};
   state.clientes.forEach((cliente) => {
     if (cliente.clienteAtivo === undefined) cliente.clienteAtivo = true;
   });
@@ -1083,6 +1087,10 @@ function renderAll() {
   updatePaymentAlert();
   updateNavigationVisibility();
   fillSelects();
+  // Atualizar editor de landing se a página admin estiver visível
+  if (document.querySelector("#adminPage")?.classList.contains("active")) {
+    if (typeof renderLandingEditor === "function") renderLandingEditor();
+  }
 }
 
 function updateNavigationVisibility() {
@@ -2729,6 +2737,7 @@ function exportBackup() {
       agendamentos: state.agendamentos,
       pacotes: state.pacotes,
       financeiro: state.financeiro,
+      landingContent: state.landingContent || {},
     },
   };
   download(`backup-${brandSlug()}-${toDateInput(new Date())}.json`, JSON.stringify(backup, null, 2), "application/json;charset=utf-8");
@@ -2760,6 +2769,7 @@ function importBackup(event) {
       state.agendamentos = data.agendamentos;
       state.pacotes = Array.isArray(data.pacotes) ? data.pacotes : [];
       state.financeiro = data.financeiro;
+      state.landingContent = data.landingContent || {};
       migrateState();
       recomputePackageUsage();
       state.agendamentos.forEach((appointment) => {
@@ -2818,3 +2828,204 @@ bindInputs();
 renderAll();
 initAuth(); // Changed from initRemoteSync()
 initRemoteSync();
+
+// ─────────────────────────────────────────────
+// LANDING CONTENT EDITOR
+// ─────────────────────────────────────────────
+
+const DEFAULT_LANDING_CONTENT = {
+  heroEyebrow: "Nail design, alongamento e cuidado",
+  heroTitle: "Rayssa Oliveira Nail Design",
+  heroDescription: "Unhas feitas com acabamento delicado, planejamento do formato e orientacao de cuidados para manter o resultado bonito por mais tempo.",
+  heroImage: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=1300&q=85",
+  highlight1Title: "Atendimento personalizado",
+  highlight1Text: "Escolha de formato, tamanho, cor e acabamento conforme seu estilo.",
+  highlight2Title: "Procedimento orientado",
+  highlight2Text: "Preparacao, aplicacao e finalizacao com explicacao dos cuidados.",
+  highlight3Title: "Manutencao planejada",
+  highlight3Text: "Recomendacoes para preservar brilho, estrutura e durabilidade.",
+  servicesEyebrow: "Servicos realizados",
+  servicesTitle: "Procedimentos para diferentes estilos de unha",
+  service1Title: "Alongamento em gel",
+  service1Text: "Estrutura resistente, acabamento natural e formato definido para quem busca durabilidade.",
+  service2Title: "Banho de gel",
+  service2Text: "Camada de protecao para fortalecer a unha natural e manter o brilho da esmaltação.",
+  service3Title: "Blindagem",
+  service3Text: "Ideal para unhas fracas, com finalizacao fina e aspecto elegante no dia a dia.",
+  service4Title: "Manutencao",
+  service4Text: "Ajuste da estrutura, correcao do crescimento e renovacao do acabamento.",
+  splitEyebrow: "Como funciona",
+  splitTitle: "Do preparo a finalizacao, cada etapa protege o resultado",
+  splitText: "O procedimento comeca com avaliacao das unhas, higienizacao, preparo da superficie, escolha do formato, aplicacao do produto adequado e finalizacao com cor, brilho ou decoracao.",
+  splitImage: "https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=900&q=85",
+  portfolioEyebrow: "Portfolio",
+  portfolioTitle: "Acabamentos para inspirar sua proxima escolha",
+  feedTitle: "Acompanhe as novidades",
+  careEyebrow: "Dicas e cuidados",
+  careTitle: "Pequenos cuidados mantem suas unhas lindas por mais tempo",
+  care1Title: "Use luvas ao lidar com produtos de limpeza",
+  care1Text: "Quimicos fortes podem reduzir o brilho e comprometer a durabilidade do acabamento.",
+  care2Title: "Evite usar as unhas como ferramenta",
+  care2Text: "Abrir embalagens ou raspar superficies pode causar trincas e deslocamentos.",
+  care3Title: "Hidrate cuticulas diariamente",
+  care3Text: "Oleos e hidratantes ajudam a manter a pele ao redor das unhas com aspecto saudavel.",
+  care4Title: "Respeite o prazo de manutencao",
+  care4Text: "O retorno no periodo indicado preserva a estrutura e deixa o resultado sempre alinhado.",
+  portfolioPhotos: [
+    { url: "https://images.unsplash.com/photo-1599206676335-193c82b13c9e?auto=format&fit=crop&w=700&q=85", caption: "Delicado e natural" },
+    { url: "https://images.unsplash.com/photo-1610992015732-2449b76344bc?auto=format&fit=crop&w=700&q=85", caption: "Cor e brilho" },
+    { url: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=700&q=85", caption: "Classico elegante" },
+  ],
+  feedPosts: [],
+};
+
+// Campos simples do editor de landing
+const LANDING_TEXT_FIELDS = [
+  "heroEyebrow","heroTitle","heroDescription","heroImage",
+  "highlight1Title","highlight1Text","highlight2Title","highlight2Text","highlight3Title","highlight3Text",
+  "servicesEyebrow","servicesTitle",
+  "service1Title","service1Text","service2Title","service2Text","service3Title","service3Text","service4Title","service4Text",
+  "splitEyebrow","splitTitle","splitText","splitImage",
+  "portfolioEyebrow","portfolioTitle","feedTitle",
+  "careEyebrow","careTitle",
+  "care1Title","care1Text","care2Title","care2Text","care3Title","care3Text","care4Title","care4Text",
+];
+
+function getLandingContent() {
+  return { ...DEFAULT_LANDING_CONTENT, ...(state.landingContent || {}) };
+}
+
+function renderLandingEditor() {
+  const content = getLandingContent();
+
+  // Preencher campos de texto
+  LANDING_TEXT_FIELDS.forEach((key) => {
+    const el = document.querySelector(`#lc_${key}`);
+    if (el) el.value = content[key] || "";
+  });
+
+  // Renderizar fotos do portfolio
+  renderPortfolioPhotosEditor(content.portfolioPhotos || []);
+
+  // Renderizar posts do feed
+  renderFeedPostsEditor(content.feedPosts || []);
+}
+
+function renderPortfolioPhotosEditor(photos) {
+  const container = document.querySelector("#portfolioPhotosEditor");
+  if (!container) return;
+  container.innerHTML = photos.map((photo, i) => `
+    <div class="photo-editor-row" data-photo-index="${i}">
+      <label>URL da imagem<input class="photo-url-input" value="${escapeHtml(photo.url || "")}" placeholder="https://..." /></label>
+      <label>Legenda<input class="photo-caption-input" value="${escapeHtml(photo.caption || "")}" /></label>
+      <button class="remove-photo-btn" data-remove-photo="${i}" type="button">Remover</button>
+    </div>
+  `).join("") || `<div class="muted" style="padding:12px">Nenhuma foto. Clique em "+ Adicionar foto".</div>`;
+
+  container.querySelectorAll("[data-remove-photo]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const content = getLandingContent();
+      const photos = [...(content.portfolioPhotos || [])];
+      photos.splice(Number(btn.dataset.removePhoto), 1);
+      state.landingContent = { ...content, portfolioPhotos: photos };
+      renderPortfolioPhotosEditor(photos);
+    });
+  });
+}
+
+function renderFeedPostsEditor(posts) {
+  const container = document.querySelector("#feedPostsEditor");
+  if (!container) return;
+  container.innerHTML = posts.map((post, i) => `
+    <div class="feed-post-editor-row" data-post-index="${i}">
+      <div class="feed-post-editor-fields">
+        <label>URL da imagem<input class="fp-image-input" value="${escapeHtml(post.imageUrl || "")}" placeholder="https://..." /></label>
+        <label>Legenda / descrição<textarea class="fp-caption-input" rows="2">${escapeHtml(post.caption || "")}</textarea></label>
+      </div>
+      <button class="remove-post-btn" data-remove-post="${i}" type="button">Remover</button>
+    </div>
+  `).join("") || `<div class="muted" style="padding:12px">Nenhuma publicação. Clique em "+ Nova publicação".</div>`;
+
+  container.querySelectorAll("[data-remove-post]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const content = getLandingContent();
+      const posts = [...(content.feedPosts || [])];
+      posts.splice(Number(btn.dataset.removePost), 1);
+      state.landingContent = { ...content, feedPosts: posts };
+      renderFeedPostsEditor(posts);
+    });
+  });
+}
+
+function readLandingEditorValues() {
+  const content = getLandingContent();
+
+  // Campos de texto
+  LANDING_TEXT_FIELDS.forEach((key) => {
+    const el = document.querySelector(`#lc_${key}`);
+    if (el) content[key] = el.value.trim();
+  });
+
+  // Fotos do portfolio
+  const photoRows = document.querySelectorAll(".photo-editor-row");
+  content.portfolioPhotos = Array.from(photoRows).map((row) => ({
+    url: row.querySelector(".photo-url-input")?.value.trim() || "",
+    caption: row.querySelector(".photo-caption-input")?.value.trim() || "",
+  })).filter((p) => p.url);
+
+  // Posts do feed
+  const postRows = document.querySelectorAll(".feed-post-editor-row");
+  const existingPosts = getLandingContent().feedPosts || [];
+  content.feedPosts = Array.from(postRows).map((row, i) => {
+    const existing = existingPosts[i] || {};
+    return {
+      id: existing.id || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}`),
+      imageUrl: row.querySelector(".fp-image-input")?.value.trim() || "",
+      caption: row.querySelector(".fp-caption-input")?.value.trim() || "",
+      createdAt: existing.createdAt || new Date().toISOString(),
+      comments: existing.comments || [],
+    };
+  }).filter((p) => p.imageUrl);
+
+  return content;
+}
+
+async function saveLandingContent() {
+  const content = readLandingEditorValues();
+  state.landingContent = content;
+  save();
+  toast("Site atualizado com sucesso.");
+}
+
+// Bind landing editor buttons
+document.querySelector("#saveLandingContent")?.addEventListener("click", saveLandingContent);
+
+document.querySelector("#addPortfolioPhoto")?.addEventListener("click", () => {
+  const content = getLandingContent();
+  const photos = [...(content.portfolioPhotos || []), { url: "", caption: "" }];
+  state.landingContent = { ...content, portfolioPhotos: photos };
+  renderPortfolioPhotosEditor(photos);
+});
+
+document.querySelector("#addFeedPost")?.addEventListener("click", () => {
+  const content = getLandingContent();
+  const posts = [...(content.feedPosts || []), {
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
+    imageUrl: "",
+    caption: "",
+    createdAt: new Date().toISOString(),
+    comments: [],
+  }];
+  state.landingContent = { ...content, feedPosts: posts };
+  renderFeedPostsEditor(posts);
+});
+
+// Render landing editor when admin page is shown
+const originalSetPage = setPage;
+// Patch setPage to render landing editor when admin page opens
+document.querySelectorAll("[data-page='admin']").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    setTimeout(renderLandingEditor, 50);
+  });
+});
+
