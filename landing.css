@@ -748,3 +748,40 @@ h3 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ── Comentário com header e botão excluir ── */
+.feed-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.feed-comment-header strong {
+  font-size: 0.85rem;
+  color: #333;
+}
+
+.feed-comment-header small {
+  font-size: 0.75rem;
+  color: #aaa;
+  margin-left: auto;
+}
+
+.feed-delete-comment {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #c0392b;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+
+.feed-delete-comment:hover {
+  opacity: 1;
+  background: #fff0ee;
+}
