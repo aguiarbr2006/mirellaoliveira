@@ -1189,46 +1189,48 @@ function monthEvent(appointment) {
 function renderRevenueChart() {
   const periodValue = document.querySelector("#dashboardPeriod").value || "currentMonth";
   const now = new Date();
-  const data = [];
   const dates = [];
 
   if (periodValue === "currentMonth") {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const daysInMonth = now.getDate();
-    for (let i = 0; i < daysInMonth; i++) {
-      const date = new Date(monthStart);
-      date.setDate(monthStart.getDate() + i);
-      dates.push(date);
+    for (let i = 0; i < now.getDate(); i++) {
+      const d = new Date(monthStart);
+      d.setDate(monthStart.getDate() + i);
+      dates.push(d);
     }
   } else {
     const days = Number(periodValue);
     for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - i);
-      dates.push(date);
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      dates.push(d);
     }
   }
 
-  dates.forEach((date) => {
+  const data = dates.map((date) => {
     const key = toDateInput(date);
-    const income = sum(state.financeiro.filter((f) => f.tipo === "entrada" && f.data === key));
-    const expense = sum(state.financeiro.filter((f) => f.tipo === "saida" && f.data === key));
-    data.push({ key, income, expense });
+    return {
+      key,
+      label: key.slice(8),
+      income: sum(state.financeiro.filter((f) => f.tipo === "entrada" && f.data === key)),
+      expense: sum(state.financeiro.filter((f) => f.tipo === "saida" && f.data === key)),
+    };
   });
 
+  const CHART_H = 200; // altura útil das barras em px
   const max = Math.max(...data.map((d) => Math.max(d.income, d.expense)), 1);
-  const chartEl = document.querySelector("#revenueChart");
+
   const bars = data.map((d) => {
-    const incomeH = d.income > 0 ? Math.max(6, (d.income / max) * 100) : 0;
-    const expenseH = d.expense > 0 ? Math.max(6, (d.expense / max) * 100) : 0;
+    const incomeH = d.income > 0 ? Math.max(4, Math.round((d.income / max) * CHART_H)) : 0;
+    const expenseH = d.expense > 0 ? Math.max(4, Math.round((d.expense / max) * CHART_H)) : 0;
     return `<div class="bar-group">
-      <div class="bar income" style="height:${incomeH}%" title="${d.key} — Entrada: ${money(d.income)}"></div>
-      <div class="bar expense" style="height:${expenseH}%" title="${d.key} — Saída: ${money(d.expense)}"></div>
-      <small>${d.key.slice(8)}</small>
+      <div class="bar income" style="height:${incomeH}px" title="${d.key} — Entrada: ${money(d.income)}"></div>
+      <div class="bar expense" style="height:${expenseH}px" title="${d.key} — Saída: ${money(d.expense)}"></div>
+      <small>${d.label}</small>
     </div>`;
   }).join("");
 
-  chartEl.innerHTML = `
+  document.querySelector("#revenueChart").innerHTML = `
     <div class="chart-legend">
       <span class="chart-legend-item income">Entradas</span>
       <span class="chart-legend-item expense">Saídas</span>
