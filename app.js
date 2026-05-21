@@ -1187,7 +1187,7 @@ function monthEvent(appointment) {
 }
 
 function renderRevenueChart() {
-  const periodValue = document.querySelector("#dashboardPeriod").value || "30";
+  const periodValue = document.querySelector("#dashboardPeriod").value || "currentMonth";
   const now = new Date();
   const data = [];
   const dates = [];
@@ -1211,17 +1211,30 @@ function renderRevenueChart() {
 
   dates.forEach((date) => {
     const key = toDateInput(date);
-    const total = sum(state.financeiro.filter((f) => f.tipo === "entrada" && f.data === key));
-    data.push({ key, total });
+    const income = sum(state.financeiro.filter((f) => f.tipo === "entrada" && f.data === key));
+    const expense = sum(state.financeiro.filter((f) => f.tipo === "saida" && f.data === key));
+    data.push({ key, income, expense });
   });
 
-  const max = Math.max(...data.map((d) => d.total), 1);
-  document.querySelector("#revenueChart").innerHTML = data
-    .map((d) => {
-      const height = Math.max(3, (d.total / max) * 100);
-      return `<div class="bar" title="${d.key}: ${money(d.total)}" style="height:${height}%"><small>${d.key.slice(8)}</small></div>`;
-    })
-    .join("");
+  const max = Math.max(...data.map((d) => Math.max(d.income, d.expense)), 1);
+  const chartEl = document.querySelector("#revenueChart");
+  const bars = data.map((d) => {
+    const incomeH = d.income > 0 ? Math.max(6, (d.income / max) * 100) : 0;
+    const expenseH = d.expense > 0 ? Math.max(6, (d.expense / max) * 100) : 0;
+    return `<div class="bar-group">
+      <div class="bar income" style="height:${incomeH}%" title="${d.key} — Entrada: ${money(d.income)}"></div>
+      <div class="bar expense" style="height:${expenseH}%" title="${d.key} — Saída: ${money(d.expense)}"></div>
+      <small>${d.key.slice(8)}</small>
+    </div>`;
+  }).join("");
+
+  chartEl.innerHTML = `
+    <div class="chart-legend">
+      <span class="chart-legend-item income">Entradas</span>
+      <span class="chart-legend-item expense">Saídas</span>
+    </div>
+    <div class="chart-bars">${bars}</div>
+  `;
 }
 
 function renderServiceRanking() {
@@ -2601,6 +2614,7 @@ function bindButtons() {
   document.querySelector("#backupFile").addEventListener("change", importBackup);
   document.querySelector("#installApp").addEventListener("click", installApp);
   document.querySelector("#exportPdf").addEventListener("click", exportPdf);
+  document.querySelector("#logoutBtn")?.addEventListener("click", handleLogout);
   document.querySelector("#paymentMethod").addEventListener("input", updatePaymentPreview);
   document.querySelector("#paymentStatus").addEventListener("input", updatePaymentPreview);
   document.querySelector("#paymentDiscountType").addEventListener("input", updatePaymentPreview);

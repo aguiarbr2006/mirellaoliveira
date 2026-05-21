@@ -53,6 +53,7 @@ let docRef = null;
 let landingContent = { ...DEFAULT_LANDING };
 let currentClientUser = null;
 let currentClientData = null;
+let currentClientIsAdmin = false;
 let activeFeedPostId = null;
 
 function isFirebaseConfigured() {
@@ -76,26 +77,51 @@ function initLanding() {
   docRef.onSnapshot((snapshot) => {
     if (!snapshot.exists) return;
     const data = snapshot.data() || {};
-    const state = data.state || {};
-    const content = { ...DEFAULT_LANDING, ...(state.landingContent || {}) };
+    const remoteState = data.state || {};
+    // Mesclar settings (nome, logo, cores) com landingContent
+    const settings = remoteState.settings || {};
+    const content = {
+      ...DEFAULT_LANDING,
+      ...(remoteState.landingContent || {}),
+      // Propagar campos de settings para o site
+      companyName: settings.companyName || DEFAULT_LANDING.heroTitle,
+      subtitle: settings.subtitle || "Nail Design",
+      logoText: settings.logoText || "",
+      logoImage: settings.logoImage || "",
+      colors: settings.colors || null,
+    };
     landingContent = content;
     applyLandingContent(content);
     renderPortfolio(content.portfolioPhotos || DEFAULT_LANDING.portfolioPhotos);
     renderFeed(content.feedPosts || []);
+    // Se o dialog de post estiver aberto, atualizar comentários em tempo real
+    if (activeFeedPostId) {
+      const post = (content.feedPosts || []).find((p) => p.id === activeFeedPostId);
+      if (post) renderFeedComments(post.comments || []);
+    }
   }, (err) => console.error("Landing sync error:", err));
 
   // Verificar se cliente está logado para permitir comentários
   firebase.auth().onAuthStateChanged((user) => {
     currentClientUser = user;
+    currentClientIsAdmin = false;
     if (user) {
-      // Buscar dados do cliente
-      docRef.get().then((snapshot) => {
-        const state = snapshot.data()?.state || {};
-        const clientes = Array.isArray(state.clientes) ? state.clientes : [];
+      // Buscar dados do cliente e verificar se é admin
+      Promise.all([
+        docRef.get(),
+        db.collection("users").doc(user.uid).get(),
+      ]).then(([stateSnap, userSnap]) => {
+        const remoteState = stateSnap.data()?.state || {};
+        const clientes = Array.isArray(remoteState.clientes) ? remoteState.clientes : [];
         currentClientData = clientes.find((c) => c.authUid === user.uid) ||
           clientes.find((c) => c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase()) || null;
+        // Admin = tem documento na coleção users com permissions.admin = true
+        if (userSnap.exists) {
+          const perms = userSnap.data()?.permissions || {};
+          currentClientIsAdmin = Boolean(perms.admin);
+        }
         updateFeedCommentUI();
-      });
+      }).catch((err) => console.error("Landing auth error:", err));
     } else {
       currentClientData = null;
       updateFeedCommentUI();
@@ -248,14 +274,55 @@ function renderFeedComments(comments) {
     list.innerHTML = `<div class="feed-no-comments">Seja o primeiro a comentar!</div>`;
     return;
   }
-  list.innerHTML = comments.map((c) => `
-    <div class="feed-comment">
-      <strong>${escapeHtml(c.authorName || "Cliente")}</strong>
+  list.innerHTML = comments.map((c, i) => `
+    <div class="feed-comment" data-comment-index="${i}">
+      <div class="feed-comment-header">
+        <strong>${escapeHtml(c.authorName || "Cliente")}</strong>
+        <small>${formatDate(c.createdAt)}</small>
+        ${isAdminUser() ? `<button class="feed-delete-comment" data-comment-index="${i}" title="Excluir comentário" type="button">🗑</button>` : ""}
+      </div>
       <span>${escapeHtml(c.text)}</span>
-      <small>${formatDate(c.createdAt)}</small>
     </div>
   `).join("");
   list.scrollTop = list.scrollHeight;
+
+  list.querySelectorAll(".feed-delete-comment").forEach((btn) => {
+    btn.addEventListener("click", () => deleteComment(Number(btn.dataset.commentIndex)));
+  });
+}
+
+function isAdminUser() {
+  return currentClientIsAdmin === true;
+}
+
+async function deleteComment(commentIndex) {
+  if (!activeFeedPostId || !db) return;
+  if (!confirm("Excluir este comentário?")) return;
+  try {
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(docRef);
+      const data = snapshot.data() || {};
+      const state = data.state || {};
+      const content = { ...DEFAULT_LANDING, ...(state.landingContent || {}) };
+      const posts = Array.isArray(content.feedPosts) ? content.feedPosts : [];
+      const postIndex = posts.findIndex((p) => p.id === activeFeedPostId);
+      if (postIndex === -1) return;
+      const comments = [...(posts[postIndex].comments || [])];
+      comments.splice(commentIndex, 1);
+      posts[postIndex].comments = comments;
+      content.feedPosts = posts;
+      transaction.set(docRef, {
+        state: { ...state, landingContent: content },
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      // Atualizar localmente
+      landingContent = content;
+      renderFeedComments(comments);
+    });
+  } catch (err) {
+    console.error("Erro ao excluir comentário:", err);
+    alert("Não foi possível excluir o comentário.");
+  }
 }
 
 function updateFeedCommentUI() {
@@ -268,6 +335,12 @@ function updateFeedCommentUI() {
   } else {
     form.style.display = "none";
     loginMsg.style.display = "block";
+  }
+  // Re-renderizar comentários para mostrar/esconder botão de excluir do admin
+  if (activeFeedPostId) {
+    const posts = landingContent.feedPosts || [];
+    const post = posts.find((p) => p.id === activeFeedPostId);
+    if (post) renderFeedComments(post.comments || []);
   }
 }
 

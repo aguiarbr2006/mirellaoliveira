@@ -477,14 +477,14 @@ textarea:focus-visible {
 }
 
 .chart {
-  height: 280px;
+  height: 300px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding-top: 8px;
-  overflow-x: auto;
   width: 100%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .chart::-webkit-scrollbar {
@@ -504,6 +504,7 @@ textarea:focus-visible {
   display: flex;
   gap: 16px;
   flex-shrink: 0;
+  padding-bottom: 4px;
 }
 
 .chart-legend-item {
@@ -535,9 +536,20 @@ textarea:focus-visible {
   flex: 1;
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: 4px;
   overflow-x: auto;
-  padding-bottom: 28px;
+  overflow-y: hidden;
+  padding-bottom: 26px;
+  min-height: 0;
+}
+
+.chart-bars::-webkit-scrollbar {
+  height: 4px;
+}
+
+.chart-bars::-webkit-scrollbar-thumb {
+  background: rgba(47, 79, 58, 0.25);
+  border-radius: 999px;
 }
 
 .bar-group {
@@ -546,36 +558,38 @@ textarea:focus-visible {
   gap: 2px;
   flex-shrink: 0;
   position: relative;
+  padding: 0 3px;
 }
 
 .bar-group small {
   position: absolute;
   left: 50%;
-  bottom: -24px;
+  bottom: -22px;
   transform: translateX(-50%);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   white-space: nowrap;
 }
 
 .bar {
-  flex: 0 0 10px;
-  min-width: 10px;
+  flex: 0 0 12px;
+  min-width: 12px;
   border-radius: 4px 4px 0 0;
   position: relative;
   transition: opacity 0.15s;
+  cursor: default;
 }
 
 .bar:hover {
-  opacity: 0.8;
+  opacity: 0.75;
 }
 
 .bar.income {
-  background: linear-gradient(180deg, var(--green), var(--green-dark));
+  background: linear-gradient(180deg, var(--green) 0%, var(--green-dark) 100%);
 }
 
 .bar.expense {
-  background: linear-gradient(180deg, #e07070, #8a3030);
+  background: linear-gradient(180deg, #e07070 0%, #8a3030 100%);
 }
 
 .service-ranking {
