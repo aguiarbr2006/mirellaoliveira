@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   logoText: "B",
   logoImage: "",
   telefoneContato: "",
+  instagram: "",
   developerCredit: "Desenvolvido por Rafael Aguiar Ribeiro · Instagram @aguiar.3d",
   colors: {
     green: "#4f7d5a",
@@ -635,6 +636,8 @@ function renderAdminSettings() {
   const settings = state.settings;
   document.querySelector("#settingCompanyName").value = settings.companyName;
   document.querySelector("#settingSubtitle").value = settings.subtitle;
+  document.querySelector("#settingTelefoneContato").value = settings.telefoneContato || "";
+  document.querySelector("#settingInstagram").value = settings.instagram || "";
   document.querySelector("#settingLogoText").value = settings.logoText;
   document.querySelector("#settingGreen").value = settings.colors.green;
   document.querySelector("#settingGreenDark").value = settings.colors.greenDark;
@@ -2373,6 +2376,8 @@ function bindForms() {
     event.preventDefault();
     state.settings.companyName = document.querySelector("#settingCompanyName").value.trim() || DEFAULT_SETTINGS.companyName;
     state.settings.subtitle = document.querySelector("#settingSubtitle").value.trim() || DEFAULT_SETTINGS.subtitle;
+    state.settings.telefoneContato = (document.querySelector("#settingTelefoneContato")?.value || "").trim();
+    state.settings.instagram = (document.querySelector("#settingInstagram")?.value || "").trim();
     state.settings.logoText = document.querySelector("#settingLogoText").value.trim() || state.settings.companyName.slice(0, 1).toUpperCase();
     state.settings.colors.green = document.querySelector("#settingGreen").value;
     state.settings.colors.greenDark = document.querySelector("#settingGreenDark").value;
