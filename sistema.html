@@ -131,6 +131,10 @@
                 <h2>Faturamento</h2>
                 <select id="dashboardPeriod">
                   <option value="currentMonth" selected>Mês atual</option>
+                  <option value="7">Últimos 7 dias</option>
+                  <option value="14">Últimos 14 dias</option>
+                  <option value="30">Últimos 30 dias</option>
+                  <option value="90">Últimos 90 dias</option>
                 </select>
               </div>
               <div class="chart" id="revenueChart"></div>
@@ -238,6 +242,7 @@
               <label>Nome da empresa<input id="settingCompanyName" required /></label>
               <label>Subtítulo<input id="settingSubtitle" /></label>
               <label>Telefone de contato (WhatsApp)<input id="settingTelefoneContato" inputmode="tel" placeholder="(11) 99999-9999" /></label>
+              <label>Instagram <small>Ex: @rayssaoliveira ou URL completa</small><input id="settingInstagram" placeholder="@usuario ou https://instagram.com/..." /></label>
               <label>Texto da logo<input id="settingLogoText" maxlength="3" /></label>
               <label>Imagem da logo<input id="settingLogoImage" type="file" accept="image/*" /></label>
               <label>Cor principal <small>Cor do botão primário</small><input id="settingGreen" type="color" /></label>
@@ -294,7 +299,13 @@
                 <label>Eyebrow (texto pequeno)<input id="lc_heroEyebrow" /></label>
                 <label>Título principal<input id="lc_heroTitle" /></label>
                 <label style="grid-column:1/-1">Descrição<textarea id="lc_heroDescription" rows="3"></textarea></label>
-                <label style="grid-column:1/-1">Imagem de fundo (URL)<input id="lc_heroImage" placeholder="https://..." /></label>
+                <label style="grid-column:1/-1">
+                  Imagem de fundo
+                  <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                    <img id="lc_heroImagePreview" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); display: none;" />
+                    <input type="file" id="lc_heroImageFile" accept="image/*" style="font-size:12px;" />
+                  </div>
+                </label>
               </div>
             </details>
 
@@ -335,7 +346,13 @@
                 <label>Eyebrow<input id="lc_splitEyebrow" /></label>
                 <label>Título<input id="lc_splitTitle" /></label>
                 <label style="grid-column:1/-1">Texto<textarea id="lc_splitText" rows="3"></textarea></label>
-                <label style="grid-column:1/-1">Imagem (URL)<input id="lc_splitImage" placeholder="https://..." /></label>
+                <label style="grid-column:1/-1">
+                  Imagem lateral
+                  <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                    <img id="lc_splitImagePreview" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); display: none;" />
+                    <input type="file" id="lc_splitImageFile" accept="image/*" style="font-size:12px;" />
+                  </div>
+                </label>
               </div>
             </details>
 
@@ -348,14 +365,6 @@
               </div>
               <div class="portfolio-photos-editor" id="portfolioPhotosEditor"></div>
               <button class="ghost-button" type="button" id="addPortfolioPhoto" style="margin-top:10px">+ Adicionar foto</button>
-            </details>
-
-            <!-- Feed -->
-            <details class="landing-section-editor">
-              <summary>Feed (publicações)</summary>
-              <label>Título da seção<input id="lc_feedTitle" /></label>
-              <div class="feed-posts-editor" id="feedPostsEditor" style="margin-top:12px"></div>
-              <button class="ghost-button" type="button" id="addFeedPost" style="margin-top:10px">+ Nova publicação</button>
             </details>
 
             <!-- Cuidados -->

@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   logoText: "B",
   logoImage: "",
   telefoneContato: "",
+  instagram: "",
   developerCredit: "Desenvolvido por Rafael Aguiar Ribeiro · Instagram @aguiar.3d",
   colors: {
     green: "#4f7d5a",
@@ -635,6 +636,8 @@ function renderAdminSettings() {
   const settings = state.settings;
   document.querySelector("#settingCompanyName").value = settings.companyName;
   document.querySelector("#settingSubtitle").value = settings.subtitle;
+  document.querySelector("#settingTelefoneContato").value = settings.telefoneContato || "";
+  document.querySelector("#settingInstagram").value = settings.instagram || "";
   document.querySelector("#settingLogoText").value = settings.logoText;
   document.querySelector("#settingGreen").value = settings.colors.green;
   document.querySelector("#settingGreenDark").value = settings.colors.greenDark;
@@ -1189,46 +1192,48 @@ function monthEvent(appointment) {
 function renderRevenueChart() {
   const periodValue = document.querySelector("#dashboardPeriod").value || "currentMonth";
   const now = new Date();
-  const data = [];
   const dates = [];
 
   if (periodValue === "currentMonth") {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const daysInMonth = now.getDate();
-    for (let i = 0; i < daysInMonth; i++) {
-      const date = new Date(monthStart);
-      date.setDate(monthStart.getDate() + i);
-      dates.push(date);
+    for (let i = 0; i < now.getDate(); i++) {
+      const d = new Date(monthStart);
+      d.setDate(monthStart.getDate() + i);
+      dates.push(d);
     }
   } else {
     const days = Number(periodValue);
     for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - i);
-      dates.push(date);
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      dates.push(d);
     }
   }
 
-  dates.forEach((date) => {
+  const data = dates.map((date) => {
     const key = toDateInput(date);
-    const income = sum(state.financeiro.filter((f) => f.tipo === "entrada" && f.data === key));
-    const expense = sum(state.financeiro.filter((f) => f.tipo === "saida" && f.data === key));
-    data.push({ key, income, expense });
+    return {
+      key,
+      label: key.slice(8),
+      income: sum(state.financeiro.filter((f) => f.tipo === "entrada" && f.data === key)),
+      expense: sum(state.financeiro.filter((f) => f.tipo === "saida" && f.data === key)),
+    };
   });
 
+  const CHART_H = 200; // altura útil das barras em px
   const max = Math.max(...data.map((d) => Math.max(d.income, d.expense)), 1);
-  const chartEl = document.querySelector("#revenueChart");
+
   const bars = data.map((d) => {
-    const incomeH = d.income > 0 ? Math.max(6, (d.income / max) * 100) : 0;
-    const expenseH = d.expense > 0 ? Math.max(6, (d.expense / max) * 100) : 0;
+    const incomeH = d.income > 0 ? Math.max(4, Math.round((d.income / max) * CHART_H)) : 0;
+    const expenseH = d.expense > 0 ? Math.max(4, Math.round((d.expense / max) * CHART_H)) : 0;
     return `<div class="bar-group">
-      <div class="bar income" style="height:${incomeH}%" title="${d.key} — Entrada: ${money(d.income)}"></div>
-      <div class="bar expense" style="height:${expenseH}%" title="${d.key} — Saída: ${money(d.expense)}"></div>
-      <small>${d.key.slice(8)}</small>
+      <div class="bar income" style="height:${incomeH}px" title="${d.key} — Entrada: ${money(d.income)}"></div>
+      <div class="bar expense" style="height:${expenseH}px" title="${d.key} — Saída: ${money(d.expense)}"></div>
+      <small>${d.label}</small>
     </div>`;
   }).join("");
 
-  chartEl.innerHTML = `
+  document.querySelector("#revenueChart").innerHTML = `
     <div class="chart-legend">
       <span class="chart-legend-item income">Entradas</span>
       <span class="chart-legend-item expense">Saídas</span>
@@ -2371,6 +2376,8 @@ function bindForms() {
     event.preventDefault();
     state.settings.companyName = document.querySelector("#settingCompanyName").value.trim() || DEFAULT_SETTINGS.companyName;
     state.settings.subtitle = document.querySelector("#settingSubtitle").value.trim() || DEFAULT_SETTINGS.subtitle;
+    state.settings.telefoneContato = (document.querySelector("#settingTelefoneContato")?.value || "").trim();
+    state.settings.instagram = (document.querySelector("#settingInstagram")?.value || "").trim();
     state.settings.logoText = document.querySelector("#settingLogoText").value.trim() || state.settings.companyName.slice(0, 1).toUpperCase();
     state.settings.colors.green = document.querySelector("#settingGreen").value;
     state.settings.colors.greenDark = document.querySelector("#settingGreenDark").value;
@@ -2923,6 +2930,18 @@ function renderLandingEditor() {
 
   // Renderizar posts do feed
   renderFeedPostsEditor(content.feedPosts || []);
+
+  // Atualizar prévias das imagens principais (Hero e Split)
+  const heroPrev = document.querySelector("#lc_heroImagePreview");
+  if (heroPrev && content.heroImage) {
+      heroPrev.src = content.heroImage;
+      heroPrev.style.display = "block";
+  }
+  const splitPrev = document.querySelector("#lc_splitImagePreview");
+  if (splitPrev && content.splitImage) {
+      splitPrev.src = content.splitImage;
+      splitPrev.style.display = "block";
+  }
 }
 
 function renderPortfolioPhotosEditor(photos) {
@@ -2930,16 +2949,41 @@ function renderPortfolioPhotosEditor(photos) {
   if (!container) return;
   container.innerHTML = photos.map((photo, i) => `
     <div class="photo-editor-row" data-photo-index="${i}">
-      <label>URL da imagem<input class="photo-url-input" value="${escapeHtml(photo.url || "")}" placeholder="https://..." /></label>
+      <div style="grid-column: 1 / -1; display: flex; gap: 10px; align-items: center;">
+        <img src="${photo.url || ''}" id="p_prev_${i}" class="photo-preview-thumb" style="display: ${photo.url ? 'block' : 'none'}; width: 50px; height: 50px;" />
+        <div style="flex: 1;">
+          <label>Foto do Portfólio (Clique para carregar)</label>
+          <input type="file" class="photo-file-input" data-index="${i}" accept="image/*" style="font-size: 11px; margin-top: 4px;" />
+        </div>
+      </div>
       <label>Legenda<input class="photo-caption-input" value="${escapeHtml(photo.caption || "")}" /></label>
       <button class="remove-photo-btn" data-remove-photo="${i}" type="button">Remover</button>
     </div>
   `).join("") || `<div class="muted" style="padding:12px">Nenhuma foto. Clique em "+ Adicionar foto".</div>`;
 
+  // Adiciona evento para cada campo de upload do portfólio
+  container.querySelectorAll(".photo-file-input").forEach(input => {
+    input.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const idx = e.target.dataset.index;
+      try {
+          const compressed = await compressImage(file, 900, 0.6); 
+          const preview = document.getElementById(`p_prev_${idx}`);
+          if (preview) {
+              preview.src = compressed;
+              preview.style.display = "block";
+          }
+      } catch (err) {
+          toast("Erro ao carregar foto.");
+      }
+    });
+  });
+
   container.querySelectorAll("[data-remove-photo]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const content = getLandingContent();
-      const photos = [...(content.portfolioPhotos || [])];
+      const content = readLandingEditorValues(); // Lê valores atuais antes de remover
+      const photos = content.portfolioPhotos;
       photos.splice(Number(btn.dataset.removePhoto), 1);
       state.landingContent = { ...content, portfolioPhotos: photos };
       renderPortfolioPhotosEditor(photos);
@@ -2953,17 +2997,42 @@ function renderFeedPostsEditor(posts) {
   container.innerHTML = posts.map((post, i) => `
     <div class="feed-post-editor-row" data-post-index="${i}">
       <div class="feed-post-editor-fields">
-        <label>URL da imagem<input class="fp-image-input" value="${escapeHtml(post.imageUrl || "")}" placeholder="https://..." /></label>
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+           <img src="${post.imageUrl || ''}" id="f_prev_${i}" class="photo-preview-thumb" style="display: ${post.imageUrl ? 'block' : 'none'}; width: 50px; height: 50px;" />
+           <div style="flex: 1;">
+             <label>Foto da Publicação (Clique para carregar)</label>
+             <input type="file" class="feed-file-input" data-index="${i}" accept="image/*" style="font-size: 11px; margin-top: 4px;" />
+           </div>
+        </div>
         <label>Legenda / descrição<textarea class="fp-caption-input" rows="2">${escapeHtml(post.caption || "")}</textarea></label>
       </div>
       <button class="remove-post-btn" data-remove-post="${i}" type="button">Remover</button>
     </div>
   `).join("") || `<div class="muted" style="padding:12px">Nenhuma publicação. Clique em "+ Nova publicação".</div>`;
 
+  // Adiciona evento para cada campo de upload das publicações
+  container.querySelectorAll(".feed-file-input").forEach(input => {
+    input.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const idx = e.target.dataset.index;
+      try {
+          const compressed = await compressImage(file, 900, 0.6);
+          const preview = document.getElementById(`f_prev_${idx}`);
+          if (preview) {
+              preview.src = compressed;
+              preview.style.display = "block";
+          }
+      } catch (err) {
+          toast("Erro ao carregar post.");
+      }
+    });
+  });
+
   container.querySelectorAll("[data-remove-post]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const content = getLandingContent();
-      const posts = [...(content.feedPosts || [])];
+      const content = readLandingEditorValues(); // Lê valores atuais antes de remover
+      const posts = content.feedPosts;
       posts.splice(Number(btn.dataset.removePost), 1);
       state.landingContent = { ...content, feedPosts: posts };
       renderFeedPostsEditor(posts);
@@ -2972,35 +3041,51 @@ function renderFeedPostsEditor(posts) {
 }
 
 function readLandingEditorValues() {
-  const content = getLandingContent();
+  const content = { ...DEFAULT_LANDING_CONTENT, ...state.landingContent };
+  
+  /**
+   * Função auxiliar para pegar a imagem da prévia.
+   */
+  const getImgSrc = (selector) => {
+      const img = document.querySelector(selector);
+      if (!img || !img.src) return "";
+      const src = img.src;
+      // Se for apenas o endereço da página atual, ignoramos pois significa que não há imagem
+      if (src === window.location.href || src.endsWith(window.location.pathname)) return "";
+      return src;
+  };
 
-  // Campos de texto
+  // Campos de texto (excluindo heroImage e splitImage que agora são via preview)
   LANDING_TEXT_FIELDS.forEach((key) => {
+    if (key === "heroImage" || key === "splitImage") return;
     const el = document.querySelector(`#lc_${key}`);
     if (el) content[key] = el.value.trim();
   });
+  
+  // Imagens principais
+  content.heroImage = getImgSrc("#lc_heroImagePreview");
+  content.splitImage = getImgSrc("#lc_splitImagePreview");
 
   // Fotos do portfolio
   const photoRows = document.querySelectorAll(".photo-editor-row");
-  content.portfolioPhotos = Array.from(photoRows).map((row) => ({
-    url: row.querySelector(".photo-url-input")?.value.trim() || "",
+  content.portfolioPhotos = Array.from(photoRows).map((row, i) => ({
+    url: getImgSrc(`#p_prev_${i}`),
     caption: row.querySelector(".photo-caption-input")?.value.trim() || "",
   })).filter((p) => p.url);
 
   // Posts do feed
   const postRows = document.querySelectorAll(".feed-post-editor-row");
-  const existingPosts = getLandingContent().feedPosts || [];
+  const existingPosts = content.feedPosts || [];
   content.feedPosts = Array.from(postRows).map((row, i) => {
     const existing = existingPosts[i] || {};
     return {
       id: existing.id || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}`),
-      imageUrl: row.querySelector(".fp-image-input")?.value.trim() || "",
+      imageUrl: getImgSrc(`#f_prev_${i}`),
       caption: row.querySelector(".fp-caption-input")?.value.trim() || "",
       createdAt: existing.createdAt || new Date().toISOString(),
       comments: existing.comments || [],
     };
   }).filter((p) => p.imageUrl);
-
   return content;
 }
 
@@ -3015,15 +3100,15 @@ async function saveLandingContent() {
 document.querySelector("#saveLandingContent")?.addEventListener("click", saveLandingContent);
 
 document.querySelector("#addPortfolioPhoto")?.addEventListener("click", () => {
-  const content = getLandingContent();
-  const photos = [...(content.portfolioPhotos || []), { url: "", caption: "" }];
+  const content = readLandingEditorValues(); // Captura legendas já digitadas antes de adicionar nova
+  const photos = [...content.portfolioPhotos, { url: "", caption: "" }];
   state.landingContent = { ...content, portfolioPhotos: photos };
   renderPortfolioPhotosEditor(photos);
 });
 
 document.querySelector("#addFeedPost")?.addEventListener("click", () => {
-  const content = getLandingContent();
-  const posts = [...(content.feedPosts || []), {
+  const content = readLandingEditorValues(); // Captura textos já digitados antes de adicionar novo
+  const posts = [...content.feedPosts, {
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
     imageUrl: "",
     caption: "",
@@ -3042,4 +3127,3 @@ document.querySelectorAll("[data-page='admin']").forEach((btn) => {
     setTimeout(renderLandingEditor, 50);
   });
 });
-

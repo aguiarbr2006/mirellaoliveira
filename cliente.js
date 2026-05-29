@@ -447,17 +447,17 @@ async function requestAppointment(event) {
       if (conflict) throw new Error("Este horario ja esta ocupado. Escolha outro horario.");
       nextState.agendamentos.push(appointment);
       transaction.set(docRef, { state: nextState, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    });
 
-      // Mostrar dialog de confirmação com botão WhatsApp
-      showBookingConfirmDialog({
-        clientName: client.nome,
-        serviceName: service.nome,
-        date,
-        time,
-        endTime: toTimeInput(end),
-        value: service.valorPadrao,
-        notes,
-      });
+    // Mostrar dialog de confirmação com botão WhatsApp (após transação bem-sucedida)
+    showBookingConfirmDialog({
+      clientName: document.querySelector("#clientName").value.trim(),
+      serviceName: service.nome,
+      date,
+      time,
+      endTime: toTimeInput(end),
+      value: service.valorPadrao,
+      notes,
     });
 
     document.querySelector("#bookingForm").reset();

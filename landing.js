@@ -94,6 +94,11 @@ function initLanding() {
     applyLandingContent(content);
     renderPortfolio(content.portfolioPhotos || DEFAULT_LANDING.portfolioPhotos);
     renderFeed(content.feedPosts || []);
+    // Se o dialog de post estiver aberto, atualizar comentários em tempo real
+    if (activeFeedPostId) {
+      const post = (content.feedPosts || []).find((p) => p.id === activeFeedPostId);
+      if (post) renderFeedComments(post.comments || []);
+    }
   }, (err) => console.error("Landing sync error:", err));
 
   // Verificar se cliente está logado para permitir comentários
@@ -139,11 +144,11 @@ function initLanding() {
 function applyLandingContent(content) {
   const set = (id, value) => {
     const el = document.getElementById(id);
-    if (el && value !== undefined) el.textContent = value;
+    if (el && value !== undefined && value !== null) el.textContent = value;
   };
   const setImg = (id, src) => {
     const el = document.getElementById(id);
-    if (el && src) el.src = src;
+    if (el && src && src !== "" && src.length > 10) el.src = src;
   };
 
   set("landingBrandName", content.companyName || "Rayssa Oliveira");
