@@ -2930,6 +2930,18 @@ function renderLandingEditor() {
 
   // Renderizar posts do feed
   renderFeedPostsEditor(content.feedPosts || []);
+
+  // Atualizar prévias das imagens principais (Hero e Split)
+  const heroPrev = document.querySelector("#lc_heroImagePreview");
+  if (heroPrev && content.heroImage) {
+      heroPrev.src = content.heroImage;
+      heroPrev.style.display = "block";
+  }
+  const splitPrev = document.querySelector("#lc_splitImagePreview");
+  if (splitPrev && content.splitImage) {
+      splitPrev.src = content.splitImage;
+      splitPrev.style.display = "block";
+  }
 }
 
 function renderPortfolioPhotosEditor(photos) {
@@ -2937,16 +2949,41 @@ function renderPortfolioPhotosEditor(photos) {
   if (!container) return;
   container.innerHTML = photos.map((photo, i) => `
     <div class="photo-editor-row" data-photo-index="${i}">
-      <label>URL da imagem<input class="photo-url-input" value="${escapeHtml(photo.url || "")}" placeholder="https://..." /></label>
+      <div style="grid-column: 1 / -1; display: flex; gap: 10px; align-items: center;">
+        <img src="${photo.url || ''}" id="p_prev_${i}" class="photo-preview-thumb" style="display: ${photo.url ? 'block' : 'none'}; width: 50px; height: 50px;" />
+        <div style="flex: 1;">
+          <label>Foto do Portfólio (Clique para carregar)</label>
+          <input type="file" class="photo-file-input" data-index="${i}" accept="image/*" style="font-size: 11px; margin-top: 4px;" />
+        </div>
+      </div>
       <label>Legenda<input class="photo-caption-input" value="${escapeHtml(photo.caption || "")}" /></label>
       <button class="remove-photo-btn" data-remove-photo="${i}" type="button">Remover</button>
     </div>
   `).join("") || `<div class="muted" style="padding:12px">Nenhuma foto. Clique em "+ Adicionar foto".</div>`;
 
+  // Adiciona evento para cada campo de upload do portfólio
+  container.querySelectorAll(".photo-file-input").forEach(input => {
+    input.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const idx = e.target.dataset.index;
+      try {
+          const compressed = await compressImage(file, 900, 0.6); 
+          const preview = document.getElementById(`p_prev_${idx}`);
+          if (preview) {
+              preview.src = compressed;
+              preview.style.display = "block";
+          }
+      } catch (err) {
+          toast("Erro ao carregar foto.");
+      }
+    });
+  });
+
   container.querySelectorAll("[data-remove-photo]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const content = getLandingContent();
-      const photos = [...(content.portfolioPhotos || [])];
+      const content = readLandingEditorValues(); // Lê valores atuais antes de remover
+      const photos = content.portfolioPhotos;
       photos.splice(Number(btn.dataset.removePhoto), 1);
       state.landingContent = { ...content, portfolioPhotos: photos };
       renderPortfolioPhotosEditor(photos);
@@ -2960,17 +2997,42 @@ function renderFeedPostsEditor(posts) {
   container.innerHTML = posts.map((post, i) => `
     <div class="feed-post-editor-row" data-post-index="${i}">
       <div class="feed-post-editor-fields">
-        <label>URL da imagem<input class="fp-image-input" value="${escapeHtml(post.imageUrl || "")}" placeholder="https://..." /></label>
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+           <img src="${post.imageUrl || ''}" id="f_prev_${i}" class="photo-preview-thumb" style="display: ${post.imageUrl ? 'block' : 'none'}; width: 50px; height: 50px;" />
+           <div style="flex: 1;">
+             <label>Foto da Publicação (Clique para carregar)</label>
+             <input type="file" class="feed-file-input" data-index="${i}" accept="image/*" style="font-size: 11px; margin-top: 4px;" />
+           </div>
+        </div>
         <label>Legenda / descrição<textarea class="fp-caption-input" rows="2">${escapeHtml(post.caption || "")}</textarea></label>
       </div>
       <button class="remove-post-btn" data-remove-post="${i}" type="button">Remover</button>
     </div>
   `).join("") || `<div class="muted" style="padding:12px">Nenhuma publicação. Clique em "+ Nova publicação".</div>`;
 
+  // Adiciona evento para cada campo de upload das publicações
+  container.querySelectorAll(".feed-file-input").forEach(input => {
+    input.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const idx = e.target.dataset.index;
+      try {
+          const compressed = await compressImage(file, 900, 0.6);
+          const preview = document.getElementById(`f_prev_${idx}`);
+          if (preview) {
+              preview.src = compressed;
+              preview.style.display = "block";
+          }
+      } catch (err) {
+          toast("Erro ao carregar post.");
+      }
+    });
+  });
+
   container.querySelectorAll("[data-remove-post]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const content = getLandingContent();
-      const posts = [...(content.feedPosts || [])];
+      const content = readLandingEditorValues(); // Lê valores atuais antes de remover
+      const posts = content.feedPosts;
       posts.splice(Number(btn.dataset.removePost), 1);
       state.landingContent = { ...content, feedPosts: posts };
       renderFeedPostsEditor(posts);
@@ -2979,35 +3041,51 @@ function renderFeedPostsEditor(posts) {
 }
 
 function readLandingEditorValues() {
-  const content = getLandingContent();
+  const content = { ...DEFAULT_LANDING_CONTENT, ...state.landingContent };
+  
+  /**
+   * Função auxiliar para pegar a imagem da prévia.
+   */
+  const getImgSrc = (selector) => {
+      const img = document.querySelector(selector);
+      if (!img || !img.src) return "";
+      const src = img.src;
+      // Se for apenas o endereço da página atual, ignoramos pois significa que não há imagem
+      if (src === window.location.href || src.endsWith(window.location.pathname)) return "";
+      return src;
+  };
 
-  // Campos de texto
+  // Campos de texto (excluindo heroImage e splitImage que agora são via preview)
   LANDING_TEXT_FIELDS.forEach((key) => {
+    if (key === "heroImage" || key === "splitImage") return;
     const el = document.querySelector(`#lc_${key}`);
     if (el) content[key] = el.value.trim();
   });
+  
+  // Imagens principais
+  content.heroImage = getImgSrc("#lc_heroImagePreview");
+  content.splitImage = getImgSrc("#lc_splitImagePreview");
 
   // Fotos do portfolio
   const photoRows = document.querySelectorAll(".photo-editor-row");
-  content.portfolioPhotos = Array.from(photoRows).map((row) => ({
-    url: row.querySelector(".photo-url-input")?.value.trim() || "",
+  content.portfolioPhotos = Array.from(photoRows).map((row, i) => ({
+    url: getImgSrc(`#p_prev_${i}`),
     caption: row.querySelector(".photo-caption-input")?.value.trim() || "",
   })).filter((p) => p.url);
 
   // Posts do feed
   const postRows = document.querySelectorAll(".feed-post-editor-row");
-  const existingPosts = getLandingContent().feedPosts || [];
+  const existingPosts = content.feedPosts || [];
   content.feedPosts = Array.from(postRows).map((row, i) => {
     const existing = existingPosts[i] || {};
     return {
       id: existing.id || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}`),
-      imageUrl: row.querySelector(".fp-image-input")?.value.trim() || "",
+      imageUrl: getImgSrc(`#f_prev_${i}`),
       caption: row.querySelector(".fp-caption-input")?.value.trim() || "",
       createdAt: existing.createdAt || new Date().toISOString(),
       comments: existing.comments || [],
     };
   }).filter((p) => p.imageUrl);
-
   return content;
 }
 
@@ -3022,15 +3100,15 @@ async function saveLandingContent() {
 document.querySelector("#saveLandingContent")?.addEventListener("click", saveLandingContent);
 
 document.querySelector("#addPortfolioPhoto")?.addEventListener("click", () => {
-  const content = getLandingContent();
-  const photos = [...(content.portfolioPhotos || []), { url: "", caption: "" }];
+  const content = readLandingEditorValues(); // Captura legendas já digitadas antes de adicionar nova
+  const photos = [...content.portfolioPhotos, { url: "", caption: "" }];
   state.landingContent = { ...content, portfolioPhotos: photos };
   renderPortfolioPhotosEditor(photos);
 });
 
 document.querySelector("#addFeedPost")?.addEventListener("click", () => {
-  const content = getLandingContent();
-  const posts = [...(content.feedPosts || []), {
+  const content = readLandingEditorValues(); // Captura textos já digitados antes de adicionar novo
+  const posts = [...content.feedPosts, {
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
     imageUrl: "",
     caption: "",
@@ -3049,4 +3127,3 @@ document.querySelectorAll("[data-page='admin']").forEach((btn) => {
     setTimeout(renderLandingEditor, 50);
   });
 });
-

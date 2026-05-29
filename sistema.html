@@ -299,7 +299,13 @@
                 <label>Eyebrow (texto pequeno)<input id="lc_heroEyebrow" /></label>
                 <label>Título principal<input id="lc_heroTitle" /></label>
                 <label style="grid-column:1/-1">Descrição<textarea id="lc_heroDescription" rows="3"></textarea></label>
-                <label style="grid-column:1/-1">Imagem de fundo (URL)<input id="lc_heroImage" placeholder="https://..." /></label>
+                <label style="grid-column:1/-1">
+                  Imagem de fundo
+                  <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                    <img id="lc_heroImagePreview" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); display: none;" />
+                    <input type="file" id="lc_heroImageFile" accept="image/*" style="font-size:12px;" />
+                  </div>
+                </label>
               </div>
             </details>
 
@@ -340,7 +346,13 @@
                 <label>Eyebrow<input id="lc_splitEyebrow" /></label>
                 <label>Título<input id="lc_splitTitle" /></label>
                 <label style="grid-column:1/-1">Texto<textarea id="lc_splitText" rows="3"></textarea></label>
-                <label style="grid-column:1/-1">Imagem (URL)<input id="lc_splitImage" placeholder="https://..." /></label>
+                <label style="grid-column:1/-1">
+                  Imagem lateral
+                  <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                    <img id="lc_splitImagePreview" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); display: none;" />
+                    <input type="file" id="lc_splitImageFile" accept="image/*" style="font-size:12px;" />
+                  </div>
+                </label>
               </div>
             </details>
 

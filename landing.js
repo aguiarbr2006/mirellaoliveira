@@ -144,11 +144,11 @@ function initLanding() {
 function applyLandingContent(content) {
   const set = (id, value) => {
     const el = document.getElementById(id);
-    if (el && value !== undefined) el.textContent = value;
+    if (el && value !== undefined && value !== null) el.textContent = value;
   };
   const setImg = (id, src) => {
     const el = document.getElementById(id);
-    if (el && src) el.src = src;
+    if (el && src && src !== "" && src.length > 10) el.src = src;
   };
 
   set("landingBrandName", content.companyName || "Rayssa Oliveira");
