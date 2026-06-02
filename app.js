@@ -2841,11 +2841,314 @@ function download(filename, content, type) {
   URL.revokeObjectURL(url);
 }
 
+const DEFAULT_LANDING_CONTENT = {
+  heroEyebrow: "Nail design, alongamento e cuidado",
+  heroTitle: "Rayssa Oliveira Nail Design",
+  heroDescription: "Unhas feitas com acabamento delicado, planejamento do formato e orientacao de cuidados para manter o resultado bonito por mais tempo.",
+  heroImage: "assets/site/hero-placeholder.svg",
+  highlight1Title: "Atendimento personalizado",
+  highlight1Text: "Escolha de formato, tamanho, cor e acabamento conforme seu estilo.",
+  highlight2Title: "Procedimento orientado",
+  highlight2Text: "Preparacao, aplicacao e finalizacao com explicacao dos cuidados.",
+  highlight3Title: "Manutencao planejada",
+  highlight3Text: "Recomendacoes para preservar brilho, estrutura e durabilidade.",
+  servicesEyebrow: "Servicos realizados",
+  servicesTitle: "Procedimentos para diferentes estilos de unha",
+  service1Title: "Alongamento em gel",
+  service1Text: "Estrutura resistente, acabamento natural e formato definido para quem busca durabilidade.",
+  service2Title: "Banho de gel",
+  service2Text: "Camada de protecao para fortalecer a unha natural e manter o brilho da esmaltação.",
+  service3Title: "Blindagem",
+  service3Text: "Ideal para unhas fracas, com finalizacao fina e aspecto elegante no dia a dia.",
+  service4Title: "Manutencao",
+  service4Text: "Ajuste da estrutura, correcao do crescimento e renovacao do acabamento.",
+  splitEyebrow: "Como funciona",
+  splitTitle: "Do preparo a finalizacao, cada etapa protege o resultado",
+  splitText: "O procedimento comeca com avaliacao das unhas, higienizacao, preparo da superficie, escolha do formato, aplicacao do produto adequado e finalizacao com cor, brilho ou decoracao.",
+  splitImage: "assets/site/split-placeholder.svg",
+  portfolioEyebrow: "Portfolio",
+  portfolioTitle: "Acabamentos para inspirar sua proxima escolha",
+  feedTitle: "Acompanhe as novidades",
+  careEyebrow: "Dicas e cuidados",
+  careTitle: "Pequenos cuidados mantem suas unhas lindas por mais tempo",
+  care1Title: "Use luvas ao lidar com produtos de limpeza",
+  care1Text: "Quimicos fortes podem reduzir o brilho e comprometer a durabilidade do acabamento.",
+  care2Title: "Evite usar as unhas como ferramenta",
+  care2Text: "Abrir embalagens ou raspar superficies pode causar trincas e deslocamentos.",
+  care3Title: "Hidrate cuticulas diariamente",
+  care3Text: "Oleos e hidratantes ajudam a manter a pele ao redor das unhas com aspecto saudavel.",
+  care4Title: "Respeite o prazo de manutencao",
+  care4Text: "O retorno no periodo indicado preserva a estrutura e deixa o resultado sempre alinhado.",
+  portfolioPhotos: [
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Delicado e natural" },
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Cor e brilho" },
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Classico elegante" },
+  ],
+  feedPosts: [],
+};
+
+const LANDING_TEXT_FIELDS = [
+  "heroEyebrow", "heroTitle", "heroDescription", "heroImage",
+  "highlight1Title", "highlight1Text", "highlight2Title", "highlight2Text", "highlight3Title", "highlight3Text",
+  "servicesEyebrow", "servicesTitle",
+  "service1Title", "service1Text", "service2Title", "service2Text", "service3Title", "service3Text", "service4Title", "service4Text",
+  "splitEyebrow", "splitTitle", "splitText", "splitImage",
+  "portfolioEyebrow", "portfolioTitle", "feedTitle",
+  "careEyebrow", "careTitle",
+  "care1Title", "care1Text", "care2Title", "care2Text", "care3Title", "care3Text", "care4Title", "care4Text",
+];
+
+function getLandingContent() {
+  return { ...DEFAULT_LANDING_CONTENT, ...(state.landingContent || {}) };
+}
+
+function updateImageUploadPreview(fieldId, src) {
+  const preview = document.querySelector(`#${fieldId}Preview`);
+  if (!preview) return;
+  if (src) {
+    preview.src = src;
+    preview.style.display = "block";
+  } else {
+    preview.removeAttribute("src");
+    preview.style.display = "none";
+  }
+}
+
+function imageFileToDataUrl(file, maxSize = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) {
+      reject(new Error("Selecione um arquivo de imagem."));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      image.onerror = () => reject(new Error("Nao foi possivel ler esta imagem."));
+      image.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Nao foi possivel carregar o arquivo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function bindLandingImageUpload(fieldId) {
+  const fileInput = document.querySelector(`#${fieldId}File`);
+  const valueInput = document.querySelector(`#${fieldId}`);
+  if (!fileInput || !valueInput) return;
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await imageFileToDataUrl(file);
+      valueInput.value = dataUrl;
+      updateImageUploadPreview(fieldId, dataUrl);
+      toast("Imagem carregada. Clique em Salvar site para publicar.");
+    } catch (err) {
+      console.error("Erro ao carregar imagem:", err);
+      toast(err.message || "Nao foi possivel carregar a imagem.");
+      fileInput.value = "";
+    }
+  });
+}
+
+function renderLandingEditor() {
+  if (!document.querySelector("#landingEditorPanel")) return;
+  const content = getLandingContent();
+
+  LANDING_TEXT_FIELDS.forEach((key) => {
+    const el = document.querySelector(`#lc_${key}`);
+    if (el) el.value = content[key] || "";
+  });
+  updateImageUploadPreview("lc_heroImage", content.heroImage || "");
+  updateImageUploadPreview("lc_splitImage", content.splitImage || "");
+  renderPortfolioPhotosEditor(content.portfolioPhotos || []);
+  renderFeedPostsEditor(content.feedPosts || []);
+}
+
+function renderPortfolioPhotosEditor(photos) {
+  const container = document.querySelector("#portfolioPhotosEditor");
+  if (!container) return;
+  container.innerHTML = photos.map((photo, i) => `
+    <div class="photo-editor-row" data-photo-index="${i}">
+      <div class="image-upload-field">
+        <span>Foto</span>
+        <img class="photo-preview-thumb" src="${escapeHtml(photo.url || "")}" alt="" ${photo.url ? "" : "style=\"display:none\""} />
+        <input class="photo-url-input" type="hidden" value="${escapeHtml(photo.url || "")}" />
+        <input class="photo-file-input" type="file" accept="image/*" />
+      </div>
+      <label>Legenda<input class="photo-caption-input" value="${escapeHtml(photo.caption || "")}" /></label>
+      <button class="remove-photo-btn" data-remove-photo="${i}" type="button">Remover</button>
+    </div>
+  `).join("") || `<div class="muted" style="padding:12px">Nenhuma foto. Clique em "+ Adicionar foto".</div>`;
+
+  container.querySelectorAll(".photo-file-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const row = input.closest(".photo-editor-row");
+      const valueInput = row?.querySelector(".photo-url-input");
+      const preview = row?.querySelector(".photo-preview-thumb");
+      const file = input.files?.[0];
+      if (!row || !valueInput || !preview || !file) return;
+      try {
+        const dataUrl = await imageFileToDataUrl(file, 1200, 0.82);
+        valueInput.value = dataUrl;
+        preview.src = dataUrl;
+        preview.style.display = "block";
+        toast("Foto carregada. Clique em Salvar site para publicar.");
+      } catch (err) {
+        console.error("Erro ao carregar foto:", err);
+        toast(err.message || "Nao foi possivel carregar a foto.");
+        input.value = "";
+      }
+    });
+  });
+
+  container.querySelectorAll("[data-remove-photo]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const content = readLandingEditorValues();
+      const photos = [...(content.portfolioPhotos || [])];
+      photos.splice(Number(btn.dataset.removePhoto), 1);
+      state.landingContent = { ...content, portfolioPhotos: photos };
+      renderPortfolioPhotosEditor(photos);
+    });
+  });
+}
+
+function renderFeedPostsEditor(posts) {
+  const container = document.querySelector("#feedPostsEditor");
+  if (!container) return;
+  container.innerHTML = posts.map((post, i) => `
+    <div class="feed-post-editor-row" data-post-index="${i}">
+      <div class="feed-post-editor-fields">
+        <div class="image-upload-field">
+          <span>Foto da publicacao</span>
+          <img class="photo-preview-thumb" src="${escapeHtml(post.imageUrl || "")}" alt="" ${post.imageUrl ? "" : "style=\"display:none\""} />
+          <input class="fp-image-input" type="hidden" value="${escapeHtml(post.imageUrl || "")}" />
+          <input class="feed-file-input" type="file" accept="image/*" />
+        </div>
+        <label>Legenda / descricao<textarea class="fp-caption-input" rows="2">${escapeHtml(post.caption || "")}</textarea></label>
+      </div>
+      <button class="remove-post-btn" data-remove-post="${i}" type="button">Remover</button>
+    </div>
+  `).join("") || `<div class="muted" style="padding:12px">Nenhuma publicacao. Clique em "+ Nova publicacao".</div>`;
+
+  container.querySelectorAll(".feed-file-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const row = input.closest(".feed-post-editor-row");
+      const valueInput = row?.querySelector(".fp-image-input");
+      const preview = row?.querySelector(".photo-preview-thumb");
+      const file = input.files?.[0];
+      if (!row || !valueInput || !preview || !file) return;
+      try {
+        const dataUrl = await imageFileToDataUrl(file, 1200, 0.82);
+        valueInput.value = dataUrl;
+        preview.src = dataUrl;
+        preview.style.display = "block";
+        toast("Foto carregada. Clique em Salvar site para publicar.");
+      } catch (err) {
+        console.error("Erro ao carregar publicacao:", err);
+        toast(err.message || "Nao foi possivel carregar a foto.");
+        input.value = "";
+      }
+    });
+  });
+
+  container.querySelectorAll("[data-remove-post]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const content = readLandingEditorValues();
+      const posts = [...(content.feedPosts || [])];
+      posts.splice(Number(btn.dataset.removePost), 1);
+      state.landingContent = { ...content, feedPosts: posts };
+      renderFeedPostsEditor(posts);
+    });
+  });
+}
+
+function readLandingEditorValues() {
+  const content = getLandingContent();
+
+  LANDING_TEXT_FIELDS.forEach((key) => {
+    const el = document.querySelector(`#lc_${key}`);
+    if (el) content[key] = el.value.trim();
+  });
+
+  const photoRows = document.querySelectorAll(".photo-editor-row");
+  if (photoRows.length || document.querySelector("#portfolioPhotosEditor")) {
+    content.portfolioPhotos = Array.from(photoRows).map((row) => ({
+      url: row.querySelector(".photo-url-input")?.value.trim() || "",
+      caption: row.querySelector(".photo-caption-input")?.value.trim() || "",
+    })).filter((photo) => photo.url);
+  }
+
+  const postRows = document.querySelectorAll(".feed-post-editor-row");
+  if (postRows.length || document.querySelector("#feedPostsEditor")) {
+    const existingPosts = getLandingContent().feedPosts || [];
+    content.feedPosts = Array.from(postRows).map((row, i) => {
+      const existing = existingPosts[i] || {};
+      return {
+        id: existing.id || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}`),
+        imageUrl: row.querySelector(".fp-image-input")?.value.trim() || "",
+        caption: row.querySelector(".fp-caption-input")?.value.trim() || "",
+        createdAt: existing.createdAt || new Date().toISOString(),
+        comments: existing.comments || [],
+      };
+    }).filter((post) => post.imageUrl);
+  }
+
+  return content;
+}
+
+function saveLandingContent() {
+  state.landingContent = readLandingEditorValues();
+  save();
+  renderLandingEditor();
+  toast("Site atualizado com sucesso.");
+}
+
+function bindLandingEditor() {
+  document.querySelector("#saveLandingContent")?.addEventListener("click", saveLandingContent);
+  bindLandingImageUpload("lc_heroImage");
+  bindLandingImageUpload("lc_splitImage");
+
+  document.querySelector("#addPortfolioPhoto")?.addEventListener("click", () => {
+    const content = readLandingEditorValues();
+    const photos = [...(content.portfolioPhotos || []), { url: "", caption: "" }];
+    state.landingContent = { ...content, portfolioPhotos: photos };
+    renderPortfolioPhotosEditor(photos);
+  });
+
+  document.querySelector("#addFeedPost")?.addEventListener("click", () => {
+    const content = readLandingEditorValues();
+    const posts = [...(content.feedPosts || []), {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
+      imageUrl: "",
+      caption: "",
+      createdAt: new Date().toISOString(),
+      comments: [],
+    }];
+    state.landingContent = { ...content, feedPosts: posts };
+    renderFeedPostsEditor(posts);
+  });
+}
+
 bindNavigation();
 bindModalClose();
 bindForms();
 bindButtons();
 bindInputs();
+bindLandingEditor();
 renderAll();
 initAuth(); // Changed from initRemoteSync()
 initRemoteSync();
