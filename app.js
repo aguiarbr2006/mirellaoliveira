@@ -2858,7 +2858,7 @@ const DEFAULT_LANDING_CONTENT = {
   heroEyebrow: "Nail design, alongamento e cuidado",
   heroTitle: "Rayssa Oliveira Nail Design",
   heroDescription: "Unhas feitas com acabamento delicado, planejamento do formato e orientacao de cuidados para manter o resultado bonito por mais tempo.",
-  heroImage: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=1300&q=85",
+  heroImage: "assets/site/hero-placeholder.svg",
   highlight1Title: "Atendimento personalizado",
   highlight1Text: "Escolha de formato, tamanho, cor e acabamento conforme seu estilo.",
   highlight2Title: "Procedimento orientado",
@@ -2878,7 +2878,7 @@ const DEFAULT_LANDING_CONTENT = {
   splitEyebrow: "Como funciona",
   splitTitle: "Do preparo a finalizacao, cada etapa protege o resultado",
   splitText: "O procedimento comeca com avaliacao das unhas, higienizacao, preparo da superficie, escolha do formato, aplicacao do produto adequado e finalizacao com cor, brilho ou decoracao.",
-  splitImage: "https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=900&q=85",
+  splitImage: "assets/site/split-placeholder.svg",
   portfolioEyebrow: "Portfolio",
   portfolioTitle: "Acabamentos para inspirar sua proxima escolha",
   feedTitle: "Acompanhe as novidades",
@@ -2893,9 +2893,9 @@ const DEFAULT_LANDING_CONTENT = {
   care4Title: "Respeite o prazo de manutencao",
   care4Text: "O retorno no periodo indicado preserva a estrutura e deixa o resultado sempre alinhado.",
   portfolioPhotos: [
-    { url: "https://images.unsplash.com/photo-1599206676335-193c82b13c9e?auto=format&fit=crop&w=700&q=85", caption: "Delicado e natural" },
-    { url: "https://images.unsplash.com/photo-1610992015732-2449b76344bc?auto=format&fit=crop&w=700&q=85", caption: "Cor e brilho" },
-    { url: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=700&q=85", caption: "Classico elegante" },
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Delicado e natural" },
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Cor e brilho" },
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Classico elegante" },
   ],
   feedPosts: [],
 };
@@ -2916,6 +2916,68 @@ function getLandingContent() {
   return { ...DEFAULT_LANDING_CONTENT, ...(state.landingContent || {}) };
 }
 
+function updateImageUploadPreview(fieldId, src) {
+  const preview = document.querySelector(`#${fieldId}Preview`);
+  if (!preview) return;
+  if (src) {
+    preview.src = src;
+    preview.style.display = "block";
+  } else {
+    preview.removeAttribute("src");
+    preview.style.display = "none";
+  }
+}
+
+function imageFileToDataUrl(file, maxSize = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) {
+      reject(new Error("Selecione um arquivo de imagem."));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      image.onerror = () => reject(new Error("Nao foi possivel ler esta imagem."));
+      image.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Nao foi possivel carregar o arquivo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function bindLandingImageUpload(fieldId) {
+  const fileInput = document.querySelector(`#${fieldId}File`);
+  const valueInput = document.querySelector(`#${fieldId}`);
+  if (!fileInput || !valueInput) return;
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await imageFileToDataUrl(file);
+      valueInput.value = dataUrl;
+      updateImageUploadPreview(fieldId, dataUrl);
+      toast("Imagem carregada. Clique em Salvar site para publicar.");
+    } catch (err) {
+      console.error("Erro ao carregar imagem:", err);
+      toast(err.message || "Nao foi possivel carregar a imagem.");
+      fileInput.value = "";
+    }
+  });
+}
+
 function renderLandingEditor() {
   const content = getLandingContent();
 
@@ -2924,24 +2986,14 @@ function renderLandingEditor() {
     const el = document.querySelector(`#lc_${key}`);
     if (el) el.value = content[key] || "";
   });
+  updateImageUploadPreview("lc_heroImage", content.heroImage || "");
+  updateImageUploadPreview("lc_splitImage", content.splitImage || "");
 
   // Renderizar fotos do portfolio
   renderPortfolioPhotosEditor(content.portfolioPhotos || []);
 
   // Renderizar posts do feed
   renderFeedPostsEditor(content.feedPosts || []);
-
-  // Atualizar prévias das imagens principais (Hero e Split)
-  const heroPrev = document.querySelector("#lc_heroImagePreview");
-  if (heroPrev && content.heroImage) {
-      heroPrev.src = content.heroImage;
-      heroPrev.style.display = "block";
-  }
-  const splitPrev = document.querySelector("#lc_splitImagePreview");
-  if (splitPrev && content.splitImage) {
-      splitPrev.src = content.splitImage;
-      splitPrev.style.display = "block";
-  }
 }
 
 function renderPortfolioPhotosEditor(photos) {
@@ -2949,41 +3001,42 @@ function renderPortfolioPhotosEditor(photos) {
   if (!container) return;
   container.innerHTML = photos.map((photo, i) => `
     <div class="photo-editor-row" data-photo-index="${i}">
-      <div style="grid-column: 1 / -1; display: flex; gap: 10px; align-items: center;">
-        <img src="${photo.url || ''}" id="p_prev_${i}" class="photo-preview-thumb" style="display: ${photo.url ? 'block' : 'none'}; width: 50px; height: 50px;" />
-        <div style="flex: 1;">
-          <label>Foto do Portfólio (Clique para carregar)</label>
-          <input type="file" class="photo-file-input" data-index="${i}" accept="image/*" style="font-size: 11px; margin-top: 4px;" />
-        </div>
+      <div class="image-upload-field">
+        <span>Foto</span>
+        <img class="photo-preview-thumb" src="${escapeHtml(photo.url || "")}" alt="" ${photo.url ? "" : "style=\"display:none\""} />
+        <input class="photo-url-input" type="hidden" value="${escapeHtml(photo.url || "")}" />
+        <input class="photo-file-input" type="file" accept="image/*" />
       </div>
       <label>Legenda<input class="photo-caption-input" value="${escapeHtml(photo.caption || "")}" /></label>
       <button class="remove-photo-btn" data-remove-photo="${i}" type="button">Remover</button>
     </div>
   `).join("") || `<div class="muted" style="padding:12px">Nenhuma foto. Clique em "+ Adicionar foto".</div>`;
 
-  // Adiciona evento para cada campo de upload do portfólio
-  container.querySelectorAll(".photo-file-input").forEach(input => {
-    input.addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const idx = e.target.dataset.index;
+  container.querySelectorAll(".photo-file-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const row = input.closest(".photo-editor-row");
+      const valueInput = row?.querySelector(".photo-url-input");
+      const preview = row?.querySelector(".photo-preview-thumb");
+      const file = input.files?.[0];
+      if (!row || !valueInput || !preview || !file) return;
       try {
-          const compressed = await compressImage(file, 900, 0.6); 
-          const preview = document.getElementById(`p_prev_${idx}`);
-          if (preview) {
-              preview.src = compressed;
-              preview.style.display = "block";
-          }
+        const dataUrl = await imageFileToDataUrl(file, 1200, 0.82);
+        valueInput.value = dataUrl;
+        preview.src = dataUrl;
+        preview.style.display = "block";
+        toast("Foto carregada. Clique em Salvar site para publicar.");
       } catch (err) {
-          toast("Erro ao carregar foto.");
+        console.error("Erro ao carregar foto:", err);
+        toast(err.message || "Nao foi possivel carregar a foto.");
+        input.value = "";
       }
     });
   });
 
   container.querySelectorAll("[data-remove-photo]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const content = readLandingEditorValues(); // Lê valores atuais antes de remover
-      const photos = content.portfolioPhotos;
+      const content = readLandingEditorValues();
+      const photos = [...(content.portfolioPhotos || [])];
       photos.splice(Number(btn.dataset.removePhoto), 1);
       state.landingContent = { ...content, portfolioPhotos: photos };
       renderPortfolioPhotosEditor(photos);
@@ -2997,12 +3050,11 @@ function renderFeedPostsEditor(posts) {
   container.innerHTML = posts.map((post, i) => `
     <div class="feed-post-editor-row" data-post-index="${i}">
       <div class="feed-post-editor-fields">
-        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-           <img src="${post.imageUrl || ''}" id="f_prev_${i}" class="photo-preview-thumb" style="display: ${post.imageUrl ? 'block' : 'none'}; width: 50px; height: 50px;" />
-           <div style="flex: 1;">
-             <label>Foto da Publicação (Clique para carregar)</label>
-             <input type="file" class="feed-file-input" data-index="${i}" accept="image/*" style="font-size: 11px; margin-top: 4px;" />
-           </div>
+        <div class="image-upload-field">
+          <span>Foto da publicacao</span>
+          <img class="photo-preview-thumb" src="${escapeHtml(post.imageUrl || "")}" alt="" ${post.imageUrl ? "" : "style=\"display:none\""} />
+          <input class="fp-image-input" type="hidden" value="${escapeHtml(post.imageUrl || "")}" />
+          <input class="feed-file-input" type="file" accept="image/*" />
         </div>
         <label>Legenda / descrição<textarea class="fp-caption-input" rows="2">${escapeHtml(post.caption || "")}</textarea></label>
       </div>
@@ -3010,29 +3062,31 @@ function renderFeedPostsEditor(posts) {
     </div>
   `).join("") || `<div class="muted" style="padding:12px">Nenhuma publicação. Clique em "+ Nova publicação".</div>`;
 
-  // Adiciona evento para cada campo de upload das publicações
-  container.querySelectorAll(".feed-file-input").forEach(input => {
-    input.addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const idx = e.target.dataset.index;
+  container.querySelectorAll(".feed-file-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const row = input.closest(".feed-post-editor-row");
+      const valueInput = row?.querySelector(".fp-image-input");
+      const preview = row?.querySelector(".photo-preview-thumb");
+      const file = input.files?.[0];
+      if (!row || !valueInput || !preview || !file) return;
       try {
-          const compressed = await compressImage(file, 900, 0.6);
-          const preview = document.getElementById(`f_prev_${idx}`);
-          if (preview) {
-              preview.src = compressed;
-              preview.style.display = "block";
-          }
+        const dataUrl = await imageFileToDataUrl(file, 1200, 0.82);
+        valueInput.value = dataUrl;
+        preview.src = dataUrl;
+        preview.style.display = "block";
+        toast("Foto carregada. Clique em Salvar site para publicar.");
       } catch (err) {
-          toast("Erro ao carregar post.");
+        console.error("Erro ao carregar publicacao:", err);
+        toast(err.message || "Nao foi possivel carregar a foto.");
+        input.value = "";
       }
     });
   });
 
   container.querySelectorAll("[data-remove-post]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const content = readLandingEditorValues(); // Lê valores atuais antes de remover
-      const posts = content.feedPosts;
+      const content = readLandingEditorValues();
+      const posts = [...(content.feedPosts || [])];
       posts.splice(Number(btn.dataset.removePost), 1);
       state.landingContent = { ...content, feedPosts: posts };
       renderFeedPostsEditor(posts);
@@ -3041,51 +3095,39 @@ function renderFeedPostsEditor(posts) {
 }
 
 function readLandingEditorValues() {
-  const content = { ...DEFAULT_LANDING_CONTENT, ...state.landingContent };
-  
-  /**
-   * Função auxiliar para pegar a imagem da prévia.
-   */
-  const getImgSrc = (selector) => {
-      const img = document.querySelector(selector);
-      if (!img || !img.src) return "";
-      const src = img.src;
-      // Se for apenas o endereço da página atual, ignoramos pois significa que não há imagem
-      if (src === window.location.href || src.endsWith(window.location.pathname)) return "";
-      return src;
-  };
+  const content = getLandingContent();
 
-  // Campos de texto (excluindo heroImage e splitImage que agora são via preview)
+  // Campos de texto
   LANDING_TEXT_FIELDS.forEach((key) => {
-    if (key === "heroImage" || key === "splitImage") return;
     const el = document.querySelector(`#lc_${key}`);
     if (el) content[key] = el.value.trim();
   });
-  
-  // Imagens principais
-  content.heroImage = getImgSrc("#lc_heroImagePreview");
-  content.splitImage = getImgSrc("#lc_splitImagePreview");
 
   // Fotos do portfolio
-  const photoRows = document.querySelectorAll(".photo-editor-row");
-  content.portfolioPhotos = Array.from(photoRows).map((row, i) => ({
-    url: getImgSrc(`#p_prev_${i}`),
-    caption: row.querySelector(".photo-caption-input")?.value.trim() || "",
-  })).filter((p) => p.url);
+  if (document.querySelector("#portfolioPhotosEditor")) {
+    const photoRows = document.querySelectorAll(".photo-editor-row");
+    content.portfolioPhotos = Array.from(photoRows).map((row) => ({
+      url: row.querySelector(".photo-url-input")?.value.trim() || "",
+      caption: row.querySelector(".photo-caption-input")?.value.trim() || "",
+    })).filter((p) => p.url);
+  }
 
   // Posts do feed
-  const postRows = document.querySelectorAll(".feed-post-editor-row");
-  const existingPosts = content.feedPosts || [];
-  content.feedPosts = Array.from(postRows).map((row, i) => {
-    const existing = existingPosts[i] || {};
-    return {
-      id: existing.id || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}`),
-      imageUrl: getImgSrc(`#f_prev_${i}`),
-      caption: row.querySelector(".fp-caption-input")?.value.trim() || "",
-      createdAt: existing.createdAt || new Date().toISOString(),
-      comments: existing.comments || [],
-    };
-  }).filter((p) => p.imageUrl);
+  if (document.querySelector("#feedPostsEditor")) {
+    const postRows = document.querySelectorAll(".feed-post-editor-row");
+    const existingPosts = getLandingContent().feedPosts || [];
+    content.feedPosts = Array.from(postRows).map((row, i) => {
+      const existing = existingPosts[i] || {};
+      return {
+        id: existing.id || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}`),
+        imageUrl: row.querySelector(".fp-image-input")?.value.trim() || "",
+        caption: row.querySelector(".fp-caption-input")?.value.trim() || "",
+        createdAt: existing.createdAt || new Date().toISOString(),
+        comments: existing.comments || [],
+      };
+    }).filter((p) => p.imageUrl);
+  }
+
   return content;
 }
 
@@ -3098,17 +3140,19 @@ async function saveLandingContent() {
 
 // Bind landing editor buttons
 document.querySelector("#saveLandingContent")?.addEventListener("click", saveLandingContent);
+bindLandingImageUpload("lc_heroImage");
+bindLandingImageUpload("lc_splitImage");
 
 document.querySelector("#addPortfolioPhoto")?.addEventListener("click", () => {
-  const content = readLandingEditorValues(); // Captura legendas já digitadas antes de adicionar nova
-  const photos = [...content.portfolioPhotos, { url: "", caption: "" }];
+  const content = readLandingEditorValues();
+  const photos = [...(content.portfolioPhotos || []), { url: "", caption: "" }];
   state.landingContent = { ...content, portfolioPhotos: photos };
   renderPortfolioPhotosEditor(photos);
 });
 
 document.querySelector("#addFeedPost")?.addEventListener("click", () => {
-  const content = readLandingEditorValues(); // Captura textos já digitados antes de adicionar novo
-  const posts = [...content.feedPosts, {
+  const content = readLandingEditorValues();
+  const posts = [...(content.feedPosts || []), {
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
     imageUrl: "",
     caption: "",
