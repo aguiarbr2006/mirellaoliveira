@@ -2855,6 +2855,8 @@ initRemoteSync();
 // ─────────────────────────────────────────────
 
 const DEFAULT_LANDING_CONTENT = {
+  // Conteúdo padrão do site público.
+  // Esses valores aparecem quando ainda não existe conteúdo salvo no Firebase.
   heroEyebrow: "Nail design, alongamento e cuidado",
   heroTitle: "Rayssa Oliveira Nail Design",
   heroDescription: "Unhas feitas com acabamento delicado, planejamento do formato e orientacao de cuidados para manter o resultado bonito por mais tempo.",
@@ -2917,6 +2919,8 @@ function getLandingContent() {
 }
 
 function updateImageUploadPreview(fieldId, src) {
+  // Atualiza a prévia visual no editor.
+  // fieldId recebe nomes como "lc_heroImage" ou "lc_splitImage".
   const preview = document.querySelector(`#${fieldId}Preview`);
   if (!preview) return;
   if (src) {
@@ -2929,6 +2933,9 @@ function updateImageUploadPreview(fieldId, src) {
 }
 
 function imageFileToDataUrl(file, maxSize = 1600, quality = 0.82) {
+  // Lê uma imagem enviada pelo computador, redimensiona em um canvas
+  // e devolve um texto Base64. Esse texto pode ser salvo no Firebase
+  // e depois usado diretamente no src de uma imagem ou no background do CSS.
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) {
       reject(new Error("Selecione um arquivo de imagem."));
@@ -2958,6 +2965,8 @@ function imageFileToDataUrl(file, maxSize = 1600, quality = 0.82) {
 }
 
 function bindLandingImageUpload(fieldId) {
+  // Liga um input de arquivo a um campo escondido.
+  // O campo escondido guarda a imagem em Base64 para ser salva junto com o restante do conteúdo.
   const fileInput = document.querySelector(`#${fieldId}File`);
   const valueInput = document.querySelector(`#${fieldId}`);
   if (!fileInput || !valueInput) return;
@@ -2979,6 +2988,8 @@ function bindLandingImageUpload(fieldId) {
 }
 
 function renderLandingEditor() {
+  // Preenche o editor do site público com o conteúdo atual.
+  // Assim a administradora pode alterar textos, fotos e legendas.
   const content = getLandingContent();
 
   // Preencher campos de texto
@@ -2997,6 +3008,8 @@ function renderLandingEditor() {
 }
 
 function renderPortfolioPhotosEditor(photos) {
+  // Monta a lista editável de fotos do portfólio.
+  // Cada linha tem upload da foto, legenda e botão para remover.
   const container = document.querySelector("#portfolioPhotosEditor");
   if (!container) return;
   container.innerHTML = photos.map((photo, i) => `
@@ -3045,6 +3058,8 @@ function renderPortfolioPhotosEditor(photos) {
 }
 
 function renderFeedPostsEditor(posts) {
+  // Monta as publicações do feed editável.
+  // O funcionamento é parecido com o portfólio, mas cada item também pode receber comentários.
   const container = document.querySelector("#feedPostsEditor");
   if (!container) return;
   container.innerHTML = posts.map((post, i) => `
@@ -3095,6 +3110,8 @@ function renderFeedPostsEditor(posts) {
 }
 
 function readLandingEditorValues() {
+  // Lê tudo que está na tela do editor antes de salvar.
+  // Isso evita perder textos ou fotos que foram alterados mas ainda não foram enviados ao Firebase.
   const content = getLandingContent();
 
   // Campos de texto
@@ -3132,6 +3149,8 @@ function readLandingEditorValues() {
 }
 
 async function saveLandingContent() {
+  // Salva o conteúdo editado no estado principal e chama save(),
+  // que é a função já existente responsável por persistir no Firebase/localStorage.
   const content = readLandingEditorValues();
   state.landingContent = content;
   save();

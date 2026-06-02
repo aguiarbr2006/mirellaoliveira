@@ -299,6 +299,8 @@
                 <label>Eyebrow (texto pequeno)<input id="lc_heroEyebrow" /></label>
                 <label>Título principal<input id="lc_heroTitle" /></label>
                 <label style="grid-column:1/-1">Descrição<textarea id="lc_heroDescription" rows="3"></textarea></label>
+                <!-- Upload da foto de fundo da página principal.
+                     O input hidden guarda a imagem em Base64 depois que o app.js processa o arquivo. -->
                 <div class="image-upload-field" style="grid-column:1/-1">
                   <span>Imagem de fundo</span>
                   <img id="lc_heroImagePreview" class="image-upload-preview" alt="" />
@@ -345,6 +347,7 @@
                 <label>Eyebrow<input id="lc_splitEyebrow" /></label>
                 <label>Título<input id="lc_splitTitle" /></label>
                 <label style="grid-column:1/-1">Texto<textarea id="lc_splitText" rows="3"></textarea></label>
+                <!-- Upload da imagem lateral da seção "Como funciona". -->
                 <div class="image-upload-field" style="grid-column:1/-1">
                   <span>Imagem</span>
                   <img id="lc_splitImagePreview" class="image-upload-preview" alt="" />
