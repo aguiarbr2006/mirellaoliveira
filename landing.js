@@ -6,7 +6,7 @@ const DEFAULT_LANDING = {
   heroEyebrow: "Nail design, alongamento e cuidado",
   heroTitle: "Rayssa Oliveira Nail Design",
   heroDescription: "Unhas feitas com acabamento delicado, planejamento do formato e orientacao de cuidados para manter o resultado bonito por mais tempo.",
-  heroImage: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=1300&q=85",
+  heroImage: "assets/site/hero-placeholder.svg",
   highlight1Title: "Atendimento personalizado",
   highlight1Text: "Escolha de formato, tamanho, cor e acabamento conforme seu estilo.",
   highlight2Title: "Procedimento orientado",
@@ -26,7 +26,7 @@ const DEFAULT_LANDING = {
   splitEyebrow: "Como funciona",
   splitTitle: "Do preparo a finalizacao, cada etapa protege o resultado",
   splitText: "O procedimento comeca com avaliacao das unhas, higienizacao, preparo da superficie, escolha do formato, aplicacao do produto adequado e finalizacao com cor, brilho ou decoracao.",
-  splitImage: "https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=900&q=85",
+  splitImage: "assets/site/split-placeholder.svg",
   portfolioEyebrow: "Portfolio",
   portfolioTitle: "Acabamentos para inspirar sua proxima escolha",
   feedTitle: "Acompanhe as novidades",
@@ -41,9 +41,9 @@ const DEFAULT_LANDING = {
   care4Title: "Respeite o prazo de manutencao",
   care4Text: "O retorno no periodo indicado preserva a estrutura e deixa o resultado sempre alinhado.",
   portfolioPhotos: [
-    { url: "https://images.unsplash.com/photo-1599206676335-193c82b13c9e?auto=format&fit=crop&w=700&q=85", caption: "Delicado e natural" },
-    { url: "https://images.unsplash.com/photo-1610992015732-2449b76344bc?auto=format&fit=crop&w=700&q=85", caption: "Cor e brilho" },
-    { url: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=700&q=85", caption: "Classico elegante" },
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Delicado e natural" },
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Cor e brilho" },
+    { url: "assets/site/portfolio-placeholder.svg", caption: "Classico elegante" },
   ],
   feedPosts: [],
 };
@@ -144,11 +144,11 @@ function initLanding() {
 function applyLandingContent(content) {
   const set = (id, value) => {
     const el = document.getElementById(id);
-    if (el && value !== undefined && value !== null) el.textContent = value;
+    if (el && value !== undefined) el.textContent = value;
   };
   const setImg = (id, src) => {
     const el = document.getElementById(id);
-    if (el && src && src !== "" && src.length > 10) el.src = src;
+    if (el && src) el.src = src;
   };
 
   set("landingBrandName", content.companyName || "Rayssa Oliveira");
