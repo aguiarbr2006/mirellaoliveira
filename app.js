@@ -35,6 +35,7 @@ const state = loadState();
 
 let remoteDb = null;
 let remoteDocRef = null;
+let remoteStorage = null;
 let remoteReady = false;
 let applyingRemoteState = false;
 let pendingRemoteSave = null;
@@ -709,6 +710,24 @@ function stopRemoteSync() {
   }
   remoteDocRef = null;
   remoteReady = false;
+}
+
+function getFirebaseStorage() {
+  if (!isFirebaseConfigured()) throw new Error("Firebase não configurado.");
+  if (!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG);
+  if (!remoteStorage) remoteStorage = firebase.storage();
+  return remoteStorage;
+}
+
+async function uploadLandingImageFile(file, folder = "landing") {
+  if (!file) throw new Error("Arquivo de imagem inválido.");
+  const storage = getFirebaseStorage();
+  const extension = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const safeFileName = `${Date.now()}-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}.${extension}`;
+  const path = `${folder}/${safeFileName}`;
+  const ref = storage.ref(path);
+  const snapshot = await ref.put(file);
+  return await snapshot.ref.getDownloadURL();
 }
 
 function toDateInput(date) {
@@ -3024,13 +3043,14 @@ function bindLandingImageUpload(fieldId) {
     const file = fileInput.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await imageFileToDataUrl(file);
-      valueInput.value = dataUrl;
-      updateImageUploadPreview(fieldId, dataUrl);
-      toast("Imagem carregada. Clique em Salvar site para publicar.");
+      toast("Enviando imagem para o Storage...");
+      const downloadUrl = await uploadLandingImageFile(file, `landing/${fieldId}`);
+      valueInput.value = downloadUrl;
+      updateImageUploadPreview(fieldId, downloadUrl);
+      toast("Imagem salva no Storage. Clique em Salvar site para publicar.");
     } catch (err) {
-      console.error("Erro ao carregar imagem:", err);
-      toast(err.message || "Nao foi possivel carregar a imagem.");
+      console.error("Erro ao enviar imagem:", err);
+      toast(err.message || "Nao foi possivel enviar a imagem.");
       fileInput.value = "";
     }
   });
@@ -3081,14 +3101,15 @@ function renderPortfolioPhotosEditor(photos) {
       const file = input.files?.[0];
       if (!row || !valueInput || !preview || !file) return;
       try {
-        const dataUrl = await imageFileToDataUrl(file, 1200, 0.82);
-        valueInput.value = dataUrl;
-        preview.src = dataUrl;
+        toast("Enviando foto para o Storage...");
+        const downloadUrl = await uploadLandingImageFile(file, "landing/portfolio");
+        valueInput.value = downloadUrl;
+        preview.src = downloadUrl;
         preview.style.display = "block";
-        toast("Foto carregada. Clique em Salvar site para publicar.");
+        toast("Foto salva no Storage. Clique em Salvar site para publicar.");
       } catch (err) {
-        console.error("Erro ao carregar foto:", err);
-        toast(err.message || "Nao foi possivel carregar a foto.");
+        console.error("Erro ao enviar foto:", err);
+        toast(err.message || "Nao foi possivel enviar a foto.");
         input.value = "";
       }
     });
@@ -3131,14 +3152,15 @@ function renderFeedPostsEditor(posts) {
       const file = input.files?.[0];
       if (!row || !valueInput || !preview || !file) return;
       try {
-        const dataUrl = await imageFileToDataUrl(file, 1200, 0.82);
-        valueInput.value = dataUrl;
-        preview.src = dataUrl;
+        toast("Enviando publicação para o Storage...");
+        const downloadUrl = await uploadLandingImageFile(file, "landing/feed");
+        valueInput.value = downloadUrl;
+        preview.src = downloadUrl;
         preview.style.display = "block";
-        toast("Foto carregada. Clique em Salvar site para publicar.");
+        toast("Publicação salva no Storage. Clique em Salvar site para publicar.");
       } catch (err) {
-        console.error("Erro ao carregar publicacao:", err);
-        toast(err.message || "Nao foi possivel carregar a foto.");
+        console.error("Erro ao enviar publicacao:", err);
+        toast(err.message || "Nao foi possivel enviar a foto.");
         input.value = "";
       }
     });
