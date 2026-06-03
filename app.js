@@ -215,7 +215,11 @@ function id() {
 
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  queueRemoteSave();
+  if (remoteDocRef && !remoteReady) {
+    queueRemoteSave(true);
+  } else {
+    queueRemoteSave();
+  }
 }
 
 function serializableState() {
@@ -231,13 +235,17 @@ function serializableState() {
 }
 
 function replaceState(nextState) {
-  state.settings = nextState.settings || defaultSettings();
-  state.clientes = Array.isArray(nextState.clientes) ? nextState.clientes : [];
-  state.servicos = Array.isArray(nextState.servicos) ? nextState.servicos : [];
-  state.agendamentos = Array.isArray(nextState.agendamentos) ? nextState.agendamentos : [];
-  state.pacotes = Array.isArray(nextState.pacotes) ? nextState.pacotes : [];
-  state.financeiro = Array.isArray(nextState.financeiro) ? nextState.financeiro : [];
-  state.landingContent = nextState.landingContent || {};
+  state.settings = {
+    ...defaultSettings(),
+    ...(state.settings || {}),
+    ...(nextState.settings || {}),
+  };
+  state.clientes = Array.isArray(nextState.clientes) ? nextState.clientes : (state.clientes || []);
+  state.servicos = Array.isArray(nextState.servicos) ? nextState.servicos : (state.servicos || []);
+  state.agendamentos = Array.isArray(nextState.agendamentos) ? nextState.agendamentos : (state.agendamentos || []);
+  state.pacotes = Array.isArray(nextState.pacotes) ? nextState.pacotes : (state.pacotes || []);
+  state.financeiro = Array.isArray(nextState.financeiro) ? nextState.financeiro : (state.financeiro || []);
+  state.landingContent = nextState.landingContent !== undefined ? nextState.landingContent : (state.landingContent || {});
   migrateState();
 }
 
@@ -759,6 +767,7 @@ function setPage(pageName) {
   document.querySelectorAll(".nav-item").forEach((item) => {
     item.classList.toggle("active", item.dataset.page === pageName);
   });
+  renderAll();
 }
 
 function calculateFinalValue(price, type, discountValue) {
@@ -3035,10 +3044,7 @@ function renderLandingEditor() {
   LANDING_TEXT_FIELDS.forEach((key) => {
     const el = document.querySelector(`#lc_${key}`);
     if (el && el.type !== "hidden") {
-      // Usar textContent para textareas, value para inputs
-      if (el.tagName === "TEXTAREA") {
-        el.textContent = content[key] || "";
-      } else if (el.tagName === "INPUT") {
+      if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
         el.value = content[key] || "";
       }
     }
