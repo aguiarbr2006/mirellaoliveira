@@ -45,6 +45,26 @@ let userPermissions = {};
 let afterPaymentSaveCallback = null;
 const APPOINTMENT_STATUSES = ["Pendente confirmação", "Agendado", "Confirmado", "Concluído", "Cancelado"];
 
+// Persistência de sessão: 4 horas
+const SESSION_DURATION = 4 * 60 * 60 * 1000; // 4 horas em milissegundos
+const SESSION_STORAGE_KEY = "nailpro-session-timestamp";
+
+function registerSessionLogin() {
+  localStorage.setItem(SESSION_STORAGE_KEY, Date.now().toString());
+}
+
+function isSessionValid() {
+  const timestamp = localStorage.getItem(SESSION_STORAGE_KEY);
+  if (!timestamp) return false;
+  const loginTime = parseInt(timestamp, 10);
+  const now = Date.now();
+  return (now - loginTime) < SESSION_DURATION;
+}
+
+function clearSessionLogin() {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
 const pages = {
   dashboard: {
     title: "Dashboard",
@@ -257,6 +277,21 @@ async function initAuth() {
     firebase.auth().onAuthStateChanged(async (user) => {
       if (user) {
         currentUser = user;
+        
+        // Verificar se a sessão já foi registrada antes
+        const hasSession = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (hasSession && !isSessionValid()) {
+          // Sessão expirou, fazer logout
+          await firebase.auth().signOut();
+          currentUser = null;
+          stopRemoteSync();
+          toast("Sua sessão expirou. Por favor, faça login novamente.");
+          showLogin();
+          return;
+        }
+        
+        // Registrar ou atualizar a sessão
+        registerSessionLogin();
         await loadUserPermissions(user.uid);
         initRemoteSync();
         showApp();
@@ -408,6 +443,7 @@ async function handleLogin() {
   try {
     const email = await resolveLoginEmail(identifier);
     await firebase.auth().signInWithEmailAndPassword(email, password);
+    registerSessionLogin(); // Registrar a sessão para 4 horas
     document.querySelector("#loginForm").reset();
   } catch (error) {
     let errorMessage = error.message || "Erro ao fazer login";
@@ -456,6 +492,7 @@ function setLoginError(message) {
 
 async function handleLogout() {
   try {
+    clearSessionLogin(); // Limpar a sessão
     await firebase.auth().signOut();
     currentUser = null;
     userPermissions = {};
@@ -1136,8 +1173,10 @@ function renderDashboard() {
     : empty("Nenhum agendamento para hoje.");
 }
 
+let currentCalendarMonth = new Date();
+
 function renderMonthCalendar() {
-  const now = new Date();
+  const now = currentCalendarMonth;
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const gridStart = new Date(monthStart);
   gridStart.setDate(monthStart.getDate() - monthStart.getDay());
@@ -1146,34 +1185,58 @@ function renderMonthCalendar() {
   gridEnd.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
   const today = toDateInput(new Date());
   const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
   const totalDays = Math.round((gridEnd - gridStart) / 86400000) + 1;
   const days = Array.from({ length: totalDays }, (_, index) => {
     const date = new Date(gridStart);
     date.setDate(gridStart.getDate() + index);
     return date;
   });
+  
+  const monthHeader = `${months[now.getMonth()]} ${now.getFullYear()}`;
+  const daysHtml = days.map((date) => {
+    const key = toDateInput(date);
+    const outside = date.getMonth() !== now.getMonth();
+    const appointments = state.agendamentos
+      .filter((appointment) => toDateInput(appointment.dataHoraInicio) === key)
+      .sort((a, b) => a.dataHoraInicio.localeCompare(b.dataHoraInicio));
+    return `
+      <article class="month-day ${key === today ? "today" : ""} ${outside ? "outside" : ""}">
+        <header>${dayNames[date.getDay()]}<small>${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</small></header>
+        <div class="month-slots">
+          ${
+            appointments.length
+              ? appointments.map(monthEvent).join("")
+              : `<div class="muted">Livre</div>`
+          }
+        </div>
+      </article>
+    `;
+  }).join("");
+  
+  const prevBtn = `<button class="calendar-nav-btn" onclick="previousCalendarMonth()">← Anterior</button>`;
+  const nextBtn = `<button class="calendar-nav-btn" onclick="nextCalendarMonth()">Próximo →</button>`;
+  
+  document.querySelector("#monthCalendar").innerHTML = `
+    <div class="calendar-header">
+      ${prevBtn}
+      <h3 class="month-header">${monthHeader}</h3>
+      ${nextBtn}
+    </div>
+    <div class="month-grid">
+      ${daysHtml}
+    </div>
+  `;
+}
 
-  document.querySelector("#monthCalendar").innerHTML = days
-    .map((date, index) => {
-      const key = toDateInput(date);
-      const outside = date.getMonth() !== now.getMonth();
-      const appointments = state.agendamentos
-        .filter((appointment) => toDateInput(appointment.dataHoraInicio) === key)
-        .sort((a, b) => a.dataHoraInicio.localeCompare(b.dataHoraInicio));
-      return `
-        <article class="month-day ${key === today ? "today" : ""} ${outside ? "outside" : ""}">
-          <header>${dayNames[date.getDay()]}<small>${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</small></header>
-          <div class="month-slots">
-            ${
-              appointments.length
-                ? appointments.map(monthEvent).join("")
-                : `<div class="muted">Livre</div>`
-            }
-          </div>
-        </article>
-      `;
-    })
-    .join("");
+function previousCalendarMonth() {
+  currentCalendarMonth = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1);
+  renderMonthCalendar();
+}
+
+function nextCalendarMonth() {
+  currentCalendarMonth = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1);
+  renderMonthCalendar();
 }
 
 function monthEvent(appointment) {
@@ -2968,10 +3031,20 @@ function renderLandingEditor() {
   if (!document.querySelector("#landingEditorPanel")) return;
   const content = getLandingContent();
 
+  // Preencher os campos de texto, incluindo textareas
   LANDING_TEXT_FIELDS.forEach((key) => {
     const el = document.querySelector(`#lc_${key}`);
-    if (el) el.value = content[key] || "";
+    if (el && el.type !== "hidden") {
+      // Usar textContent para textareas, value para inputs
+      if (el.tagName === "TEXTAREA") {
+        el.textContent = content[key] || "";
+      } else if (el.tagName === "INPUT") {
+        el.value = content[key] || "";
+      }
+    }
   });
+  
+  // Preencher as imagens
   updateImageUploadPreview("lc_heroImage", content.heroImage || "");
   updateImageUploadPreview("lc_splitImage", content.splitImage || "");
   renderPortfolioPhotosEditor(content.portfolioPhotos || []);

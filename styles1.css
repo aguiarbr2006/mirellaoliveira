@@ -541,11 +541,46 @@ textarea:focus-visible {
 }
 
 .month-calendar {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.calendar-nav-btn {
+  padding: 8px 16px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendar-nav-btn:hover {
+  background: var(--green-dark);
+  transform: translateY(-1px);
+}
+
+.month-header {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+  text-align: center;
+}
+
+.month-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(130px, 1fr));
   gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 4px;
 }
 
 .month-day {

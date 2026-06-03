@@ -63,6 +63,7 @@ function isFirebaseConfigured() {
 }
 
 function initLanding() {
+  // Mostrar conteúdo padrão inicialmente
   applyLandingContent(DEFAULT_LANDING);
   renderPortfolio(DEFAULT_LANDING.portfolioPhotos);
   renderFeed(DEFAULT_LANDING.feedPosts);
@@ -73,33 +74,44 @@ function initLanding() {
   db = firebase.firestore();
   docRef = db.doc(LANDING_DOC_PATH);
 
-  // Escutar mudanças em tempo real
-  docRef.onSnapshot((snapshot) => {
+  const applyRemoteSnapshot = (snapshot) => {
     if (!snapshot.exists) return;
     const data = snapshot.data() || {};
-    const remoteState = data.state || {};
+    const remoteState = data.state || data;
+
     // Mesclar settings (nome, logo, cores) com landingContent
     const settings = remoteState.settings || {};
+    const remoteContent = remoteState.landingContent || data.landingContent || {};
     const content = {
       ...DEFAULT_LANDING,
-      ...(remoteState.landingContent || {}),
+      ...remoteContent,
       // Propagar campos de settings para o site
       companyName: settings.companyName || DEFAULT_LANDING.heroTitle,
       subtitle: settings.subtitle || "Nail Design",
       logoText: settings.logoText || "",
       logoImage: settings.logoImage || "",
       colors: settings.colors || null,
+      // Garantir que imagens remotas sejam preservadas corretamente
+      heroImage: remoteContent.heroImage !== undefined ? remoteContent.heroImage : DEFAULT_LANDING.heroImage,
+      splitImage: remoteContent.splitImage !== undefined ? remoteContent.splitImage : DEFAULT_LANDING.splitImage,
     };
     landingContent = content;
     applyLandingContent(content);
     renderPortfolio(content.portfolioPhotos || DEFAULT_LANDING.portfolioPhotos);
-    renderFeed(content.feedPosts || []);
-    // Se o dialog de post estiver aberto, atualizar comentários em tempo real
+    renderFeed(content.feedPosts || DEFAULT_LANDING.feedPosts);
     if (activeFeedPostId) {
       const post = (content.feedPosts || []).find((p) => p.id === activeFeedPostId);
       if (post) renderFeedComments(post.comments || []);
     }
-  }, (err) => console.error("Landing sync error:", err));
+  };
+
+  // Escutar mudanças em tempo real
+  docRef.onSnapshot(applyRemoteSnapshot, (err) => console.error("Landing sync error:", err));
+
+  // Carregar uma vez imediatamente, caso o onSnapshot demore ou a atualização seja gerada antes da conexão
+  docRef.get()
+    .then(applyRemoteSnapshot)
+    .catch((err) => console.error("Landing fetch error:", err));
 
   // Verificar se cliente está logado para permitir comentários
   firebase.auth().onAuthStateChanged((user) => {
