@@ -524,10 +524,10 @@ function initRemoteSync() {
           return;
         }
 
-        const data = snapshot.data();
-        if (!data?.state) return;
+        const data = snapshot.data() || {};
+        const remoteState = data.state || data;
         applyingRemoteState = true;
-        replaceState(data.state);
+        replaceState(remoteState);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         applyingRemoteState = false;
         remoteReady = true;
