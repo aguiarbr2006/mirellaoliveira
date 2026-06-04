@@ -30,7 +30,7 @@ function defaultSettings() {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 }
 
-const hasSavedState = Boolean(localStorage.getItem(STORAGE_KEY));
+const hasSavedState = false; // do not rely on localStorage for state persistence
 const state = loadState();
 
 let remoteDb = null;
@@ -110,8 +110,7 @@ const pages = {
 };
 
 function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) return JSON.parse(saved);
+  // Persistência local desativada: sempre inicializa a partir do estado padrão/remote
 
   const now = new Date();
   const date = toDateInput(now);
@@ -215,7 +214,7 @@ function id() {
 }
 
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // Persist only to remote Firestore (do not write to localStorage)
   if (remoteDocRef && !remoteReady) {
     queueRemoteSave(true);
   } else {
@@ -537,7 +536,7 @@ function initRemoteSync() {
         const remoteState = data.state || data;
         applyingRemoteState = true;
         replaceState(remoteState);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        // Do not persist to localStorage; rely on remote only
         applyingRemoteState = false;
         remoteReady = true;
         renderAll();
@@ -3036,22 +3035,62 @@ function imageFileToDataUrl(file, maxSize = 1600, quality = 0.82) {
 
 function bindLandingImageUpload(fieldId) {
   const fileInput = document.querySelector(`#${fieldId}File`);
-  const valueInput = document.querySelector(`#${fieldId}`);
-  if (!fileInput || !valueInput) return;
+  let valueInput = document.querySelector(`#${fieldId}`);
+  if (!valueInput) {
+    // create a URL input next to the preview if missing (admin markup may vary)
+    const preview = document.querySelector(`#${fieldId}Preview`);
+    valueInput = document.createElement("input");
+    valueInput.id = fieldId;
+    valueInput.type = "url";
+    valueInput.className = "lc-url-input";
+    valueInput.placeholder = "Cole a URL da imagem aqui";
+    if (preview && preview.parentNode) {
+      preview.parentNode.insertBefore(valueInput, preview.nextSibling);
+    } else {
+      const panel = document.querySelector("#landingEditorPanel");
+      if (panel) panel.appendChild(valueInput);
+    }
+  }
 
-  fileInput.addEventListener("change", async () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
+  const URL_ONLY_FIELDS = ["lc_heroImage", "lc_splitImage"];
+  const isUrlOnly = URL_ONLY_FIELDS.includes(fieldId);
+
+  if (fileInput) {
+    if (isUrlOnly) {
+      // hide/disable upload control for fields that should only accept links
+      try {
+        fileInput.value = "";
+        fileInput.style.display = "none";
+        fileInput.disabled = true;
+      } catch (e) {
+        // ignore DOM quirks
+      }
+    } else {
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        try {
+          toast("Enviando imagem para o Storage...");
+          const downloadUrl = await uploadLandingImageFile(file, `landing/${fieldId}`);
+          valueInput.value = downloadUrl;
+          updateImageUploadPreview(fieldId, downloadUrl);
+          toast("Imagem salva no Storage. Clique em Salvar site para publicar.");
+        } catch (err) {
+          console.error("Erro ao enviar imagem:", err);
+          toast(err.message || "Nao foi possivel enviar a imagem.");
+          fileInput.value = "";
+        }
+      });
+    }
+  }
+
+  // Allow pasting/typing a direct image URL and update preview immediately
+  valueInput.addEventListener("input", () => {
     try {
-      toast("Enviando imagem para o Storage...");
-      const downloadUrl = await uploadLandingImageFile(file, `landing/${fieldId}`);
-      valueInput.value = downloadUrl;
-      updateImageUploadPreview(fieldId, downloadUrl);
-      toast("Imagem salva no Storage. Clique em Salvar site para publicar.");
+      const url = (valueInput.value || "").trim();
+      updateImageUploadPreview(fieldId, url);
     } catch (err) {
-      console.error("Erro ao enviar imagem:", err);
-      toast(err.message || "Nao foi possivel enviar a imagem.");
-      fileInput.value = "";
+      console.error("Erro ao atualizar pré-visualização:", err);
     }
   });
 }
@@ -3072,9 +3111,14 @@ function renderLandingEditor() {
   
   // Preencher as imagens
   updateImageUploadPreview("lc_heroImage", content.heroImage || "");
+  // ensure URL input exists and is filled (support variants with/without lc_ prefix)
+  const heroInput = document.querySelector('#lc_heroImage') || document.querySelector('#heroImage');
+  if (heroInput && heroInput.tagName === 'INPUT') heroInput.value = content.heroImage || '';
   updateImageUploadPreview("lc_splitImage", content.splitImage || "");
+  const splitInput = document.querySelector('#lc_splitImage') || document.querySelector('#splitImage');
+  if (splitInput && splitInput.tagName === 'INPUT') splitInput.value = content.splitImage || '';
   renderPortfolioPhotosEditor(content.portfolioPhotos || []);
-  renderFeedPostsEditor(content.feedPosts || []);
+  // feed removed from admin editor
 }
 
 function renderPortfolioPhotosEditor(photos) {
@@ -3085,32 +3129,29 @@ function renderPortfolioPhotosEditor(photos) {
       <div class="image-upload-field">
         <span>Foto</span>
         <img class="photo-preview-thumb" src="${escapeHtml(photo.url || "")}" alt="" ${photo.url ? "" : "style=\"display:none\""} />
-        <input class="photo-url-input" type="hidden" value="${escapeHtml(photo.url || "")}" />
-        <input class="photo-file-input" type="file" accept="image/*" />
+        <input class="photo-url-input" type="url" placeholder="Cole a URL da imagem aqui" value="${escapeHtml(photo.url || "")}" />
       </div>
       <label>Legenda<input class="photo-caption-input" value="${escapeHtml(photo.caption || "")}" /></label>
       <button class="remove-photo-btn" data-remove-photo="${i}" type="button">Remover</button>
     </div>
   `).join("") || `<div class="muted" style="padding:12px">Nenhuma foto. Clique em "+ Adicionar foto".</div>`;
 
-  container.querySelectorAll(".photo-file-input").forEach((input) => {
-    input.addEventListener("change", async () => {
+  // no file uploads for portfolio photos — only URL input is used
+
+  // Allow setting image URL directly and update preview
+  container.querySelectorAll(".photo-url-input").forEach((input) => {
+    input.addEventListener("input", () => {
       const row = input.closest(".photo-editor-row");
-      const valueInput = row?.querySelector(".photo-url-input");
       const preview = row?.querySelector(".photo-preview-thumb");
-      const file = input.files?.[0];
-      if (!row || !valueInput || !preview || !file) return;
-      try {
-        toast("Enviando foto para o Storage...");
-        const downloadUrl = await uploadLandingImageFile(file, "landing/portfolio");
-        valueInput.value = downloadUrl;
-        preview.src = downloadUrl;
-        preview.style.display = "block";
-        toast("Foto salva no Storage. Clique em Salvar site para publicar.");
-      } catch (err) {
-        console.error("Erro ao enviar foto:", err);
-        toast(err.message || "Nao foi possivel enviar a foto.");
-        input.value = "";
+      const val = (input.value || "").trim();
+      if (preview) {
+        if (val) {
+          preview.src = val;
+          preview.style.display = "block";
+        } else {
+          preview.removeAttribute("src");
+          preview.style.display = "none";
+        }
       }
     });
   });
@@ -3126,56 +3167,7 @@ function renderPortfolioPhotosEditor(photos) {
   });
 }
 
-function renderFeedPostsEditor(posts) {
-  const container = document.querySelector("#feedPostsEditor");
-  if (!container) return;
-  container.innerHTML = posts.map((post, i) => `
-    <div class="feed-post-editor-row" data-post-index="${i}">
-      <div class="feed-post-editor-fields">
-        <div class="image-upload-field">
-          <span>Foto da publicacao</span>
-          <img class="photo-preview-thumb" src="${escapeHtml(post.imageUrl || "")}" alt="" ${post.imageUrl ? "" : "style=\"display:none\""} />
-          <input class="fp-image-input" type="hidden" value="${escapeHtml(post.imageUrl || "")}" />
-          <input class="feed-file-input" type="file" accept="image/*" />
-        </div>
-        <label>Legenda / descricao<textarea class="fp-caption-input" rows="2">${escapeHtml(post.caption || "")}</textarea></label>
-      </div>
-      <button class="remove-post-btn" data-remove-post="${i}" type="button">Remover</button>
-    </div>
-  `).join("") || `<div class="muted" style="padding:12px">Nenhuma publicacao. Clique em "+ Nova publicacao".</div>`;
-
-  container.querySelectorAll(".feed-file-input").forEach((input) => {
-    input.addEventListener("change", async () => {
-      const row = input.closest(".feed-post-editor-row");
-      const valueInput = row?.querySelector(".fp-image-input");
-      const preview = row?.querySelector(".photo-preview-thumb");
-      const file = input.files?.[0];
-      if (!row || !valueInput || !preview || !file) return;
-      try {
-        toast("Enviando publicação para o Storage...");
-        const downloadUrl = await uploadLandingImageFile(file, "landing/feed");
-        valueInput.value = downloadUrl;
-        preview.src = downloadUrl;
-        preview.style.display = "block";
-        toast("Publicação salva no Storage. Clique em Salvar site para publicar.");
-      } catch (err) {
-        console.error("Erro ao enviar publicacao:", err);
-        toast(err.message || "Nao foi possivel enviar a foto.");
-        input.value = "";
-      }
-    });
-  });
-
-  container.querySelectorAll("[data-remove-post]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const content = readLandingEditorValues();
-      const posts = [...(content.feedPosts || [])];
-      posts.splice(Number(btn.dataset.removePost), 1);
-      state.landingContent = { ...content, feedPosts: posts };
-      renderFeedPostsEditor(posts);
-    });
-  });
-}
+function renderFeedPostsEditor() { /* feed removed */ }
 
 function readLandingEditorValues() {
   const content = getLandingContent();
@@ -3193,29 +3185,47 @@ function readLandingEditorValues() {
     })).filter((photo) => photo.url);
   }
 
-  const postRows = document.querySelectorAll(".feed-post-editor-row");
-  if (postRows.length || document.querySelector("#feedPostsEditor")) {
-    const existingPosts = getLandingContent().feedPosts || [];
-    content.feedPosts = Array.from(postRows).map((row, i) => {
-      const existing = existingPosts[i] || {};
-      return {
-        id: existing.id || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}`),
-        imageUrl: row.querySelector(".fp-image-input")?.value.trim() || "",
-        caption: row.querySelector(".fp-caption-input")?.value.trim() || "",
-        createdAt: existing.createdAt || new Date().toISOString(),
-        comments: existing.comments || [],
-      };
-    }).filter((post) => post.imageUrl);
-  }
+  // feed removed — do not collect feedPosts from editor
 
   return content;
 }
 
-function saveLandingContent() {
-  state.landingContent = readLandingEditorValues();
-  save();
-  renderLandingEditor();
-  toast("Site atualizado com sucesso.");
+function buildStateWithLanding(newLanding) {
+  const base = serializableState();
+  base.landingContent = newLanding || {};
+  return base;
+}
+
+async function saveLandingContent() {
+  const newLanding = readLandingEditorValues();
+
+  if (!isFirebaseConfigured()) {
+    toast("Firebase não está configurado. Configure o Firebase para salvar no servidor.");
+    return;
+  }
+
+  if (!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG);
+
+  if (!firebase.auth().currentUser) {
+    toast("Faça login como administrador para salvar alterações no Firebase.");
+    return;
+  }
+
+  try {
+    toast("Salvando no Firebase...");
+    if (!remoteDb) remoteDb = firebase.firestore();
+    if (!remoteDocRef) remoteDocRef = remoteDb.doc(window.FIREBASE_DOC_PATH || "sistemas/firebase");
+
+    await remoteDocRef.set({ state: buildStateWithLanding(newLanding), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+
+    // Only update local state after successful remote save
+    state.landingContent = newLanding;
+    renderLandingEditor();
+    toast("Site salvo no Firebase com sucesso.");
+  } catch (err) {
+    console.error("Erro ao salvar landingContent no Firebase:", err);
+    toast("Não foi possível salvar no Firebase. Verifique permissões ou conexão.");
+  }
 }
 
 function bindLandingEditor() {
@@ -3229,19 +3239,7 @@ function bindLandingEditor() {
     state.landingContent = { ...content, portfolioPhotos: photos };
     renderPortfolioPhotosEditor(photos);
   });
-
-  document.querySelector("#addFeedPost")?.addEventListener("click", () => {
-    const content = readLandingEditorValues();
-    const posts = [...(content.feedPosts || []), {
-      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
-      imageUrl: "",
-      caption: "",
-      createdAt: new Date().toISOString(),
-      comments: [],
-    }];
-    state.landingContent = { ...content, feedPosts: posts };
-    renderFeedPostsEditor(posts);
-  });
+  // feed removed — no add feed post button
 }
 
 bindNavigation();

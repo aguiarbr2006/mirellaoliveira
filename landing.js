@@ -66,7 +66,7 @@ function initLanding() {
   // Mostrar conteúdo padrão inicialmente
   applyLandingContent(DEFAULT_LANDING);
   renderPortfolio(DEFAULT_LANDING.portfolioPhotos);
-  renderFeed(DEFAULT_LANDING.feedPosts);
+  // feed removido — não renderizar
 
   if (!isFirebaseConfigured() || window.location.protocol === "file:") return;
 
@@ -98,11 +98,6 @@ function initLanding() {
     landingContent = content;
     applyLandingContent(content);
     renderPortfolio(content.portfolioPhotos || DEFAULT_LANDING.portfolioPhotos);
-    renderFeed(content.feedPosts || DEFAULT_LANDING.feedPosts);
-    if (activeFeedPostId) {
-      const post = (content.feedPosts || []).find((p) => p.id === activeFeedPostId);
-      if (post) renderFeedComments(post.comments || []);
-    }
   };
 
   // Escutar mudanças em tempo real
@@ -113,44 +108,7 @@ function initLanding() {
     .then(applyRemoteSnapshot)
     .catch((err) => console.error("Landing fetch error:", err));
 
-  // Verificar se cliente está logado para permitir comentários
-  firebase.auth().onAuthStateChanged((user) => {
-    currentClientUser = user;
-    currentClientIsAdmin = false;
-    if (user) {
-      // Buscar dados do cliente e verificar se é admin
-      Promise.all([
-        docRef.get(),
-        db.collection("users").doc(user.uid).get(),
-      ]).then(([stateSnap, userSnap]) => {
-        const remoteState = stateSnap.data()?.state || {};
-        const clientes = Array.isArray(remoteState.clientes) ? remoteState.clientes : [];
-        currentClientData = clientes.find((c) => c.authUid === user.uid) ||
-          clientes.find((c) => c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase()) || null;
-        // Admin = tem documento na coleção users com permissions.admin = true
-        if (userSnap.exists) {
-          const perms = userSnap.data()?.permissions || {};
-          currentClientIsAdmin = Boolean(perms.admin);
-        }
-        updateFeedCommentUI();
-      }).catch((err) => console.error("Landing auth error:", err));
-    } else {
-      currentClientData = null;
-      updateFeedCommentUI();
-    }
-  });
-
-  // Fechar dialog
-  document.querySelector("#closeFeedDialog")?.addEventListener("click", () => {
-    document.querySelector("#feedPostDialog").close();
-    activeFeedPostId = null;
-  });
-
-  // Enviar comentário
-  document.querySelector("#feedCommentSubmit")?.addEventListener("click", submitFeedComment);
-  document.querySelector("#feedCommentInput")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitFeedComment(); }
-  });
+  // feed/comment UI removed — nothing to initialize
 }
 
 function applyLandingContent(content) {
@@ -191,7 +149,7 @@ function applyLandingContent(content) {
   setImg("splitImage", content.splitImage);
   set("portfolioEyebrow", content.portfolioEyebrow);
   set("portfolioTitle", content.portfolioTitle);
-  set("feedTitle", content.feedTitle);
+  // feed removed
   set("careEyebrow", content.careEyebrow);
   set("careTitle", content.careTitle);
   set("care1Title", content.care1Title);
@@ -237,70 +195,17 @@ function renderPortfolio(photos) {
 }
 
 function renderFeed(posts) {
+  // feed removed — hide feed grid if present
   const grid = document.getElementById("feedGrid");
-  if (!grid) return;
-  if (!posts || !posts.length) {
-    grid.innerHTML = `<div class="feed-empty">Nenhuma publicação ainda.</div>`;
-    return;
-  }
-  grid.innerHTML = posts.map((post) => {
-    const commentCount = (post.comments || []).length;
-    return `
-      <article class="feed-card" data-post-id="${escapeHtml(post.id)}">
-        <div class="feed-card-media">
-          <img src="${escapeHtml(post.imageUrl || '')}" alt="${escapeHtml(post.caption || '')}" loading="lazy" />
-          <div class="feed-card-overlay">
-            <span>💬 ${commentCount}</span>
-          </div>
-        </div>
-        <div class="feed-card-body">
-          <p class="feed-card-caption">${escapeHtml(post.caption || "")}</p>
-          <span class="feed-card-date">${formatDate(post.createdAt)}</span>
-        </div>
-      </article>
-    `;
-  }).join("");
-
-  grid.querySelectorAll(".feed-card").forEach((card) => {
-    card.addEventListener("click", () => openFeedPost(card.dataset.postId));
-  });
+  if (grid) grid.style.display = "none";
 }
 
 function openFeedPost(postId) {
-  const posts = landingContent.feedPosts || [];
-  const post = posts.find((p) => p.id === postId);
-  if (!post) return;
-  activeFeedPostId = postId;
-
-  document.getElementById("feedPostImage").src = post.imageUrl || "";
-  document.getElementById("feedPostCaption").textContent = post.caption || "";
-  renderFeedComments(post.comments || []);
-  updateFeedCommentUI();
-  document.getElementById("feedPostDialog").showModal();
+  // feed removed
 }
 
 function renderFeedComments(comments) {
-  const list = document.getElementById("feedCommentsList");
-  if (!list) return;
-  if (!comments.length) {
-    list.innerHTML = `<div class="feed-no-comments">Seja o primeiro a comentar!</div>`;
-    return;
-  }
-  list.innerHTML = comments.map((c, i) => `
-    <div class="feed-comment" data-comment-index="${i}">
-      <div class="feed-comment-header">
-        <strong>${escapeHtml(c.authorName || "Cliente")}</strong>
-        <small>${formatDate(c.createdAt)}</small>
-        ${isAdminUser() ? `<button class="feed-delete-comment" data-comment-index="${i}" title="Excluir comentário" type="button">🗑</button>` : ""}
-      </div>
-      <span>${escapeHtml(c.text)}</span>
-    </div>
-  `).join("");
-  list.scrollTop = list.scrollHeight;
-
-  list.querySelectorAll(".feed-delete-comment").forEach((btn) => {
-    btn.addEventListener("click", () => deleteComment(Number(btn.dataset.commentIndex)));
-  });
+  // feed comments removed
 }
 
 function isAdminUser() {
@@ -308,89 +213,15 @@ function isAdminUser() {
 }
 
 async function deleteComment(commentIndex) {
-  if (!activeFeedPostId || !db) return;
-  if (!confirm("Excluir este comentário?")) return;
-  try {
-    await db.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(docRef);
-      const data = snapshot.data() || {};
-      const state = data.state || {};
-      const content = { ...DEFAULT_LANDING, ...(state.landingContent || {}) };
-      const posts = Array.isArray(content.feedPosts) ? content.feedPosts : [];
-      const postIndex = posts.findIndex((p) => p.id === activeFeedPostId);
-      if (postIndex === -1) return;
-      const comments = [...(posts[postIndex].comments || [])];
-      comments.splice(commentIndex, 1);
-      posts[postIndex].comments = comments;
-      content.feedPosts = posts;
-      transaction.set(docRef, {
-        state: { ...state, landingContent: content },
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-      // Atualizar localmente
-      landingContent = content;
-      renderFeedComments(comments);
-    });
-  } catch (err) {
-    console.error("Erro ao excluir comentário:", err);
-    alert("Não foi possível excluir o comentário.");
-  }
+  // feed removed
 }
 
 function updateFeedCommentUI() {
-  const form = document.getElementById("feedCommentForm");
-  const loginMsg = document.getElementById("feedCommentLogin");
-  if (!form || !loginMsg) return;
-  if (currentClientUser && currentClientData) {
-    form.style.display = "flex";
-    loginMsg.style.display = "none";
-  } else {
-    form.style.display = "none";
-    loginMsg.style.display = "block";
-  }
-  // Re-renderizar comentários para mostrar/esconder botão de excluir do admin
-  if (activeFeedPostId) {
-    const posts = landingContent.feedPosts || [];
-    const post = posts.find((p) => p.id === activeFeedPostId);
-    if (post) renderFeedComments(post.comments || []);
-  }
+  // feed UI removed
 }
 
 async function submitFeedComment() {
-  if (!currentClientUser || !currentClientData || !activeFeedPostId || !db) return;
-  const input = document.getElementById("feedCommentInput");
-  const text = input.value.trim();
-  if (!text) return;
-
-  const comment = {
-    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
-    authorName: currentClientData.nome || currentClientUser.displayName || "Cliente",
-    authorUid: currentClientUser.uid,
-    text,
-    createdAt: new Date().toISOString(),
-  };
-
-  try {
-    await db.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(docRef);
-      const data = snapshot.data() || {};
-      const state = data.state || {};
-      const content = { ...DEFAULT_LANDING, ...(state.landingContent || {}) };
-      const posts = Array.isArray(content.feedPosts) ? content.feedPosts : [];
-      const postIndex = posts.findIndex((p) => p.id === activeFeedPostId);
-      if (postIndex === -1) throw new Error("Post não encontrado.");
-      posts[postIndex].comments = [...(posts[postIndex].comments || []), comment];
-      content.feedPosts = posts;
-      transaction.set(docRef, {
-        state: { ...state, landingContent: content },
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-    });
-    input.value = "";
-  } catch (err) {
-    console.error("Erro ao comentar:", err);
-    alert("Não foi possível enviar o comentário.");
-  }
+  // feed removed
 }
 
 function formatDate(iso) {
