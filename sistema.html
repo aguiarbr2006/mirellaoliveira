@@ -221,6 +221,13 @@
         <section class="page" id="pacotesPage">
           <div class="toolbar">
             <input type="search" id="packageSearch" placeholder="Buscar cliente ou pacote" />
+            <select id="packageStatusFilter">
+              <option value="ativos">Ativos</option>
+              <option value="todos">Todos</option>
+              <option value="ativo">Somente ativos</option>
+              <option value="finalizado">Finalizados</option>
+              <option value="cancelado">Cancelados</option>
+            </select>
             <button class="primary-button" id="openPackageModal">Novo pacote</button>
           </div>
           <div class="list cards" id="packageList"></div>
@@ -485,17 +492,27 @@
         <input type="hidden" id="appointmentId" />
         <div class="form-grid">
           <label>Cliente<select id="appointmentClient" required></select></label>
-          <label class="checkbox"><input id="usePackage" type="checkbox" /> Usar pacote da cliente</label>
+          <label class="checkbox"><input id="usePackage" type="checkbox" /> Usar créditos do pacote</label>
+
+          <!-- MODO PACOTE -->
           <label class="package-field">Pacote<select id="appointmentPackage"></select></label>
-          <label class="package-field">Serviço do pacote
-            <select id="packageCreditType"></select>
-          </label>
           <div class="form-help package-field" id="packageHelp">Cadastre um pacote para a cliente antes de usar esta opção.</div>
-          <label class="service-field">Serviço 1<select id="appointmentService"></select></label>
-          <label class="service-field">Serviço 2 opcional<select id="appointmentService2"></select></label>
+          <!-- créditos do pacote a consumir (gerado dinamicamente) -->
+          <div class="package-field" id="packageCreditsContainer" style="grid-column:1/-1"></div>
+          <!-- resumo de créditos antes de salvar -->
+          <div class="package-field final-value" id="packageCreditSummary" style="grid-column:1/-1;display:none"></div>
+
+          <!-- MODO SERVIÇO NORMAL (lista dinâmica) -->
+          <div class="service-field" id="servicesList" style="grid-column:1/-1">
+            <!-- linhas de serviço geradas por renderServiceLines() -->
+          </div>
+          <div class="service-field" style="grid-column:1/-1">
+            <button class="ghost-button" type="button" id="addServiceLine" style="width:auto">+ Adicionar serviço</button>
+          </div>
+
           <label>Início<input id="appointmentStart" type="datetime-local" required /></label>
           <label>Fim<input id="appointmentEnd" type="datetime-local" required /></label>
-          <label class="payment-field">Valor<input id="appointmentPrice" type="number" min="0" step="0.01" /></label>
+          <label class="payment-field">Valor total<input id="appointmentPrice" type="number" min="0" step="0.01" /></label>
           <input id="discountType" type="hidden" value="nenhum" />
           <input id="discountValue" type="hidden" value="0" />
           <label class="payment-field">Forma de pagamento
@@ -558,10 +575,16 @@
         <label>Valor pago<input id="packageValue" type="number" min="0" step="0.01" required /></label>
         <div class="package-services" id="packageServices"></div>
         <label>Validade<input id="packageExpires" type="date" /></label>
+        <!-- Histórico de uso do pacote -->
+        <div id="packageHistorySection" style="display:none">
+          <div class="package-services-title" style="margin-bottom:8px">Histórico de utilização</div>
+          <div id="packageHistoryList" class="package-history-list"></div>
+        </div>
         <footer>
-          <button type="button" class="danger-button" id="deletePackage">Excluir pacote</button>
+          <button type="button" class="danger-button" id="deletePackage">Excluir</button>
+          <button type="button" class="ghost-button" id="cancelPackageBtn" style="display:none">Cancelar pacote</button>
           <span></span>
-          <button type="button" class="ghost-button" data-close="packageModal">Cancelar</button>
+          <button type="button" class="ghost-button" data-close="packageModal">Fechar</button>
           <button class="primary-button" type="submit">Salvar pacote</button>
         </footer>
       </form>
