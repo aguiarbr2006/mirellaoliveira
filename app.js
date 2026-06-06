@@ -2187,7 +2187,13 @@ function fillAppointmentPackages() {
   updatePackageModeFields();
 }
 
-function updatePackageModeFields() {
+/**
+ * Atualiza a visibilidade dos campos do modal de agendamento
+ * conforme o modo (pacote ou serviço normal).
+ * @param {boolean} skipCreditRender - se true, não re-renderiza créditos do pacote
+ *   (usado por openAppointment que já restaurou os créditos no passo anterior)
+ */
+function updatePackageModeFields(skipCreditRender = false) {
   const usePackage = document.querySelector("#usePackage")?.checked;
 
   // Mostrar/ocultar campos de pacote vs serviço normal
@@ -2209,12 +2215,14 @@ function updatePackageModeFields() {
     const payStatus = document.querySelector("#appointmentPaymentStatus");
     if (payStatus) payStatus.value = "pago";
 
-    // Renderizar créditos se pacote já selecionado
-    const pacoteId = packageSelect?.value;
-    if (pacoteId) renderPackageCreditLines(pacoteId);
-    else {
-      const c = document.querySelector("#packageCreditsContainer");
-      if (c) c.innerHTML = "";
+    // Renderizar créditos apenas se não foi feito antes (ex: openAppointment já fez)
+    if (!skipCreditRender) {
+      const pacoteId = packageSelect?.value;
+      if (pacoteId) renderPackageCreditLines(pacoteId);
+      else {
+        const c = document.querySelector("#packageCreditsContainer");
+        if (c) c.innerHTML = "";
+      }
     }
   } else {
     const summary = document.querySelector("#packageCreditSummary");
@@ -2280,32 +2288,8 @@ function openAppointment(appointmentId = "") {
   now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
   const end = new Date(now.getTime() + 60 * 60 * 1000);
 
+  // 1. Campos simples
   document.querySelector("#appointmentId").value = item?.id || "";
-  document.querySelector("#appointmentClient").value = item?.clienteId || "";
-  fillAppointmentPackages();
-
-  const usarPacote = Boolean(item?.usarPacote);
-  document.querySelector("#usePackage").checked = usarPacote;
-
-  if (usarPacote && item.pacoteId) {
-    document.querySelector("#appointmentPackage").value = item.pacoteId;
-    // Reconstruir créditos múltiplos ou compatibilidade com crédito único antigo
-    const existingCredits = Array.isArray(item.creditosConsumidos)
-      ? item.creditosConsumidos.map((c) => ({ servicoId: c.servicoId, qty: c.qty || 1 }))
-      : [{ servicoId: item.servicoCreditoPacoteId || item.tipoCreditoPacote || "", qty: 1 }];
-    renderPackageCreditLines(item.pacoteId, existingCredits.filter((c) => c.servicoId));
-  } else {
-    // Reconstruir lista de serviços do agendamento
-    let serviceIds = [];
-    if (Array.isArray(item?.servicos) && item.servicos.length) {
-      serviceIds = item.servicos.map((s) => s.id).filter(Boolean);
-    } else if (item?.servicoId) {
-      serviceIds = [item.servicoId];
-      if (item.servicoId2) serviceIds.push(item.servicoId2);
-    }
-    renderServiceLines(serviceIds.length ? serviceIds : [""]);
-  }
-
   document.querySelector("#appointmentStart").value = item?.dataHoraInicio || toDateTimeInput(now);
   document.querySelector("#appointmentEnd").value = item?.dataHoraFim || toDateTimeInput(end);
   document.querySelector("#appointmentPrice").value = item?.valorServico ?? "";
@@ -2319,6 +2303,50 @@ function openAppointment(appointmentId = "") {
   document.querySelector("#appointmentNotes").value = item?.observacoes || "";
   document.querySelector("#deleteAppointment").style.visibility = item ? "visible" : "hidden";
 
+  // 2. Cliente — setar antes de fillAppointmentPackages
+  document.querySelector("#appointmentClient").value = item?.clienteId || "";
+
+  // 3. Modo pacote — setar o checkbox ANTES de chamar fillAppointmentPackages
+  const usarPacote = Boolean(item?.usarPacote);
+  document.querySelector("#usePackage").checked = usarPacote;
+
+  // 4. Preencher lista de pacotes disponíveis para a cliente
+  fillAppointmentPackages();
+
+  // 5. Restaurar valor do select de pacote (após fillAppointmentPackages que recria as options)
+  if (usarPacote && item?.pacoteId) {
+    document.querySelector("#appointmentPackage").value = item.pacoteId;
+  }
+
+  // 6. Restaurar serviços ou créditos do pacote
+  if (usarPacote && item?.pacoteId) {
+    // Reconstruir créditos: novo formato (creditosConsumidos) ou legado (servicoCreditoPacoteId)
+    let existingCredits = [];
+    if (Array.isArray(item.creditosConsumidos) && item.creditosConsumidos.length) {
+      existingCredits = item.creditosConsumidos.map((c) => ({
+        servicoId: c.servicoId,
+        qty: c.qty || 1,
+      }));
+    } else if (item.servicoCreditoPacoteId || item.tipoCreditoPacote) {
+      existingCredits = [{
+        servicoId: item.servicoCreditoPacoteId || item.tipoCreditoPacote,
+        qty: 1,
+      }];
+    }
+    renderPackageCreditLines(item.pacoteId, existingCredits.filter((c) => c.servicoId));
+  } else {
+    // Restaurar lista de serviços normais
+    let serviceIds = [];
+    if (Array.isArray(item?.servicos) && item.servicos.length) {
+      serviceIds = item.servicos.map((s) => s.id).filter(Boolean);
+    } else if (item?.servicoId) {
+      serviceIds = [item.servicoId];
+      if (item.servicoId2) serviceIds.push(item.servicoId2);
+    }
+    renderServiceLines(serviceIds.length ? serviceIds : [""]);
+  }
+
+  // 7. Atualizar visibilidade dos campos com base no modo (pacote vs serviço)
   updatePackageModeFields();
   updateFinalPreview();
   document.querySelector("#appointmentModal").showModal();
