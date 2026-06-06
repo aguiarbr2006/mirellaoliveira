@@ -2151,7 +2151,7 @@ function fillSelects() {
   fillAppointmentPackages();
 }
 
-function fillAppointmentPackages() {
+function fillAppointmentPackages(preserveChecked = false) {
   const packageSelect = document.querySelector("#appointmentPackage");
   const packageHelp = document.querySelector("#packageHelp");
   const usePackage = document.querySelector("#usePackage");
@@ -2160,9 +2160,9 @@ function fillAppointmentPackages() {
   if (!clientId) {
     packageSelect.innerHTML = `<option value="">Escolha uma cliente primeiro</option>`;
     packageSelect.disabled = true;
-    usePackage.checked = false;
+    if (!preserveChecked) usePackage.checked = false;
     if (packageHelp) packageHelp.textContent = "Escolha uma cliente para ver os pacotes disponíveis.";
-    updatePackageModeFields();
+    if (!preserveChecked) updatePackageModeFields();
     return;
   }
 
@@ -2170,9 +2170,9 @@ function fillAppointmentPackages() {
   if (!packages.length) {
     packageSelect.innerHTML = `<option value="">Cliente sem pacote ativo</option>`;
     packageSelect.disabled = true;
-    usePackage.checked = false;
+    if (!preserveChecked) usePackage.checked = false;
     if (packageHelp) packageHelp.textContent = "Esta cliente não tem pacote ativo. Cadastre em Pacotes > Novo pacote.";
-    updatePackageModeFields();
+    if (!preserveChecked) updatePackageModeFields();
     return;
   }
 
@@ -2311,7 +2311,9 @@ function openAppointment(appointmentId = "") {
   document.querySelector("#usePackage").checked = usarPacote;
 
   // 4. Preencher lista de pacotes disponíveis para a cliente
-  fillAppointmentPackages();
+  // preserveChecked=true: não resetar o checkbox nem chamar updatePackageModeFields internamente,
+  // pois já fizemos isso na ordem correta aqui
+  fillAppointmentPackages(true);
 
   // 5. Restaurar valor do select de pacote (após fillAppointmentPackages que recria as options)
   if (usarPacote && item?.pacoteId) {
@@ -2347,7 +2349,8 @@ function openAppointment(appointmentId = "") {
   }
 
   // 7. Atualizar visibilidade dos campos com base no modo (pacote vs serviço)
-  updatePackageModeFields();
+  // skipCreditRender=true: os créditos já foram renderizados no passo 6
+  updatePackageModeFields(true);
   updateFinalPreview();
   document.querySelector("#appointmentModal").showModal();
 }
