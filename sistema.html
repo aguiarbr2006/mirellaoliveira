@@ -260,6 +260,10 @@
               <label>Cor da barra de alerta<input id="settingAlert" type="color" /></label>
               <label>Taxa Débito (%)<input id="taxaDebito" type="number" min="0" step="0.01" /></label>
               <label>Taxa Crédito (%)<input id="taxaCredito" type="number" min="0" step="0.01" /></label>
+              <label>Início do atendimento<input id="settingOpeningTime" type="time" /></label>
+              <label>Fim do atendimento<input id="settingClosingTime" type="time" /></label>
+              <label>Início do almoço<input id="settingLunchStart" type="time" /></label>
+              <label>Fim do almoço<input id="settingLunchEnd" type="time" /></label>
               <label>Crédito do desenvolvedor<input id="settingDeveloperCredit" readonly /></label>
             </div>
             <div class="admin-preview">
@@ -307,13 +311,11 @@
                 <label>Eyebrow (texto pequeno)<input id="lc_heroEyebrow" /></label>
                 <label>Título principal<input id="lc_heroTitle" /></label>
                 <label style="grid-column:1/-1">Descrição<textarea id="lc_heroDescription" rows="3"></textarea></label>
-                <!-- Upload da foto de fundo da página principal.
-                     O input hidden guarda a imagem em Base64 depois que o app.js processa o arquivo. -->
+                <!-- Link da foto de fundo da página principal. -->
                 <div class="image-upload-field" style="grid-column:1/-1">
-                  <span>Imagem de fundo</span>
+                  <span>Link da imagem de fundo</span>
                   <img id="lc_heroImagePreview" class="image-upload-preview" alt="" />
-                  <input id="lc_heroImage" type="url" placeholder="Cole a URL da imagem de fundo aqui" />
-                  <input id="lc_heroImageFile" type="file" accept="image/*" />
+                  <input id="lc_heroImage" type="url" placeholder="Cole a URL da imagem de fundo aqui (ex: https://...)" />
                 </div>
               </div>
             </details>
@@ -355,12 +357,11 @@
                 <label>Eyebrow<input id="lc_splitEyebrow" /></label>
                 <label>Título<input id="lc_splitTitle" /></label>
                 <label style="grid-column:1/-1">Texto<textarea id="lc_splitText" rows="3"></textarea></label>
-                <!-- Upload da imagem lateral da seção "Como funciona". -->
+                <!-- Link da imagem lateral da seção "Como funciona". -->
                 <div class="image-upload-field" style="grid-column:1/-1">
-                  <span>Imagem</span>
+                  <span>Link da imagem</span>
                   <img id="lc_splitImagePreview" class="image-upload-preview" alt="" />
-                  <input id="lc_splitImage" type="url" placeholder="Cole a URL da imagem aqui" />
-                  <input id="lc_splitImageFile" type="file" accept="image/*" />
+                  <input id="lc_splitImage" type="url" placeholder="Cole a URL da imagem aqui (ex: https://...)" />
                 </div>
               </div>
             </details>

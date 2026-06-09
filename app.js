@@ -24,6 +24,10 @@ const DEFAULT_SETTINGS = {
     debito: 1.99,
     credito: 4.99,
   },
+  openingTime: "08:00",
+  closingTime: "19:00",
+  lunchStart: "12:00",
+  lunchEnd: "13:00",
 };
 
 function defaultSettings() {
@@ -712,6 +716,10 @@ function renderAdminSettings() {
   document.querySelector("#settingAlert").value = settings.colors.alert || DEFAULT_SETTINGS.colors.alert;
   document.querySelector("#taxaDebito").value = settings.taxas.debito;
   document.querySelector("#taxaCredito").value = settings.taxas.credito;
+  document.querySelector("#settingOpeningTime").value = settings.openingTime || "08:00";
+  document.querySelector("#settingClosingTime").value = settings.closingTime || "19:00";
+  document.querySelector("#settingLunchStart").value = settings.lunchStart || "12:00";
+  document.querySelector("#settingLunchEnd").value = settings.lunchEnd || "13:00";
   document.querySelector("#settingDeveloperCredit").value = settings.developerCredit;
   document.querySelector("#adminNamePreview").textContent = companyName();
   document.querySelector("#adminSubtitlePreview").textContent = settings.subtitle;
@@ -2961,6 +2969,10 @@ function bindForms() {
       debito: Number(document.querySelector("#taxaDebito").value || 0),
       credito: Number(document.querySelector("#taxaCredito").value || 0),
     };
+    state.settings.openingTime = document.querySelector("#settingOpeningTime").value;
+    state.settings.closingTime = document.querySelector("#settingClosingTime").value;
+    state.settings.lunchStart = document.querySelector("#settingLunchStart").value;
+    state.settings.lunchEnd = document.querySelector("#settingLunchEnd").value;
     save();
     renderAll();
     toast("Configurações salvas.");
@@ -3306,7 +3318,7 @@ function bindInputs() {
     const pacoteId = document.querySelector("#appointmentPackage").value;
     if (pacoteId) renderPackageCreditLines(pacoteId);
   });
-  ["settingCompanyName", "settingSubtitle", "settingLogoText", "settingGreen", "settingGreenDark", "settingBeige", "settingInk", "settingAlert", "taxaDebito", "taxaCredito"].forEach((idName) => {
+  ["settingCompanyName", "settingSubtitle", "settingLogoText", "settingGreen", "settingGreenDark", "settingBeige", "settingInk", "settingAlert", "taxaDebito", "taxaCredito", "settingOpeningTime", "settingClosingTime", "settingLunchStart", "settingLunchEnd"].forEach((idName) => {
     document.querySelector(`#${idName}`).addEventListener("input", () => {
       state.settings.companyName = document.querySelector("#settingCompanyName").value;
       state.settings.subtitle = document.querySelector("#settingSubtitle").value;
@@ -3320,6 +3332,10 @@ function bindInputs() {
         debito: Number(document.querySelector("#taxaDebito").value || 0),
         credito: Number(document.querySelector("#taxaCredito").value || 0),
       };
+      state.settings.openingTime = document.querySelector("#settingOpeningTime").value;
+      state.settings.closingTime = document.querySelector("#settingClosingTime").value;
+      state.settings.lunchStart = document.querySelector("#settingLunchStart").value;
+      state.settings.lunchEnd = document.querySelector("#settingLunchEnd").value;
       applySettings(true);
       document.querySelector("#adminNamePreview").textContent = document.querySelector("#settingCompanyName").value || DEFAULT_SETTINGS.companyName;
       document.querySelector("#adminSubtitlePreview").textContent = document.querySelector("#settingSubtitle").value || DEFAULT_SETTINGS.subtitle;
@@ -3536,52 +3552,25 @@ function imageFileToDataUrl(file, maxSize = 1600, quality = 0.82) {
 function bindLandingImageUpload(fieldId) {
   const fileInput = document.querySelector(`#${fieldId}File`);
   let valueInput = document.querySelector(`#${fieldId}`);
-  if (!valueInput) {
-    // create a URL input next to the preview if missing (admin markup may vary)
-    const preview = document.querySelector(`#${fieldId}Preview`);
-    valueInput = document.createElement("input");
-    valueInput.id = fieldId;
-    valueInput.type = "url";
-    valueInput.className = "lc-url-input";
-    valueInput.placeholder = "Cole a URL da imagem aqui";
-    if (preview && preview.parentNode) {
-      preview.parentNode.insertBefore(valueInput, preview.nextSibling);
-    } else {
-      const panel = document.querySelector("#landingEditorPanel");
-      if (panel) panel.appendChild(valueInput);
-    }
-  }
-
-  const URL_ONLY_FIELDS = ["lc_heroImage", "lc_splitImage"];
-  const isUrlOnly = URL_ONLY_FIELDS.includes(fieldId);
+  
+  if (!valueInput) return;
 
   if (fileInput) {
-    if (isUrlOnly) {
-      // hide/disable upload control for fields that should only accept links
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
       try {
+        toast("Enviando imagem para o Storage...");
+        const downloadUrl = await uploadLandingImageFile(file, `landing/${fieldId}`);
+        valueInput.value = downloadUrl;
+        updateImageUploadPreview(fieldId, downloadUrl);
+        toast("Imagem salva no Storage. Clique em Salvar site para publicar.");
+      } catch (err) {
+        console.error("Erro ao enviar imagem:", err);
+        toast(err.message || "Nao foi possivel enviar a imagem.");
         fileInput.value = "";
-        fileInput.style.display = "none";
-        fileInput.disabled = true;
-      } catch (e) {
-        // ignore DOM quirks
       }
-    } else {
-      fileInput.addEventListener("change", async () => {
-        const file = fileInput.files?.[0];
-        if (!file) return;
-        try {
-          toast("Enviando imagem para o Storage...");
-          const downloadUrl = await uploadLandingImageFile(file, `landing/${fieldId}`);
-          valueInput.value = downloadUrl;
-          updateImageUploadPreview(fieldId, downloadUrl);
-          toast("Imagem salva no Storage. Clique em Salvar site para publicar.");
-        } catch (err) {
-          console.error("Erro ao enviar imagem:", err);
-          toast(err.message || "Nao foi possivel enviar a imagem.");
-          fileInput.value = "";
-        }
-      });
-    }
+    });
   }
 
   // Allow pasting/typing a direct image URL and update preview immediately
@@ -3638,41 +3627,42 @@ function renderPortfolioPhotosEditor(photos) {
           : `<div class="photo-preview-empty">Sem foto</div>`
         }
         <div class="photo-upload-actions">
-          <label class="ghost-button photo-file-label" style="cursor:pointer;min-height:36px;padding:0 12px;display:inline-flex;align-items:center;">
-            📁 Escolher foto
-            <input type="file" accept="image/*" class="photo-file-input" data-index="${i}" style="display:none" />
-          </label>
           ${photo.url ? `<button class="remove-photo-btn" data-remove-photo="${i}" type="button" title="Remover foto">🗑 Remover</button>` : ""}
         </div>
       </div>
-      <label style="grid-column:2;align-self:start">
-        Legenda
-        <input class="photo-caption-input" value="${escapeHtml(photo.caption || "")}" placeholder="Ex.: Alongamento nude" />
-      </label>
+      <div style="display:grid;gap:8px">
+        <label>
+          Link da foto
+          <input class="photo-url-input" value="${escapeHtml(photo.url || "")}" placeholder="https://... (URL da imagem)" data-index="${i}" />
+        </label>
+        <label>
+          Legenda
+          <input class="photo-caption-input" value="${escapeHtml(photo.caption || "")}" placeholder="Ex.: Alongamento nude" />
+        </label>
+      </div>
     </div>
   `).join("");
 
-  // Bind upload de arquivo para cada foto
-  container.querySelectorAll(".photo-file-input").forEach((fileInput) => {
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-      const index = Number(fileInput.dataset.index);
-      try {
-        toast("Processando imagem...");
-        // Converte para base64 JPEG redimensionado (max 1200px, qualidade 0.82)
-        const dataUrl = await imageFileToDataUrl(file, 1200, 0.82);
-        // Atualiza o estado imediatamente
-        const content = readLandingEditorValues();
-        if (!content.portfolioPhotos[index]) content.portfolioPhotos[index] = {};
-        content.portfolioPhotos[index].url = dataUrl;
-        state.landingContent = content;
-        renderPortfolioPhotosEditor(content.portfolioPhotos);
-        toast("Foto carregada. Clique em 'Salvar site' para publicar.");
-      } catch (err) {
-        console.error("Erro ao processar foto:", err);
-        toast(err.message || "Não foi possível carregar a imagem.");
-        fileInput.value = "";
+  // Bind alteração de URL para cada foto para atualizar preview
+  container.querySelectorAll(".photo-url-input").forEach((input) => {
+    input.addEventListener("input", () => {
+      const index = Number(input.dataset.index);
+      const url = input.value.trim();
+      const preview = container.querySelector(`.photo-editor-row[data-photo-index="${index}"] .photo-upload-cell`);
+      if (preview) {
+        if (url) {
+          preview.innerHTML = `<img class="photo-preview-thumb" src="${escapeHtml(url)}" alt="foto ${index + 1}" /><div class="photo-upload-actions"><button class="remove-photo-btn" data-remove-photo="${index}" type="button" title="Remover foto">🗑 Remover</button></div>`;
+          // Re-bind remove button since we replaced innerHTML
+          preview.querySelector("[data-remove-photo]").addEventListener("click", () => {
+            const content = readLandingEditorValues();
+            const updatedPhotos = [...(content.portfolioPhotos || [])];
+            updatedPhotos.splice(index, 1);
+            state.landingContent = { ...content, portfolioPhotos: updatedPhotos };
+            renderPortfolioPhotosEditor(updatedPhotos);
+          });
+        } else {
+          preview.innerHTML = `<div class="photo-preview-empty">Sem foto</div><div class="photo-upload-actions"></div>`;
+        }
       }
     });
   });
@@ -3701,10 +3691,8 @@ function readLandingEditorValues() {
 
   const photoRows = document.querySelectorAll(".photo-editor-row");
   if (photoRows.length || document.querySelector("#portfolioPhotosEditor")) {
-    // Preservar as URLs já carregadas no state (base64 ou remote)
-    const existingPhotos = (state.landingContent?.portfolioPhotos) || (getLandingContent().portfolioPhotos) || [];
-    content.portfolioPhotos = Array.from(photoRows).map((row, i) => ({
-      url: existingPhotos[i]?.url || "",
+    content.portfolioPhotos = Array.from(photoRows).map((row) => ({
+      url: (row.querySelector(".photo-url-input")?.value || "").trim(),
       caption: (row.querySelector(".photo-caption-input")?.value || "").trim(),
     })).filter((p) => p.url);
   }
