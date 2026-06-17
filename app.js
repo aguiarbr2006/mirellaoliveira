@@ -6,7 +6,7 @@ const currency = new Intl.NumberFormat("pt-BR", {
 });
 
 const DEFAULT_SETTINGS = {
-  companyName: "Rayssa Oliveira",
+  companyName: "Mirella Oliveira",
   subtitle: "Nail designer",
   logoText: "R",
   logoImage: "",
@@ -3449,7 +3449,7 @@ function download(filename, content, type) {
 
 const DEFAULT_LANDING_CONTENT = {
   heroEyebrow: "Nail design, alongamento e cuidado",
-  heroTitle: "Rayssa Oliveira Nail Design",
+  heroTitle: "Mirella Oliveira",
   heroDescription: "Unhas feitas com acabamento delicado, planejamento do formato e orientacao de cuidados para manter o resultado bonito por mais tempo.",
   heroImage: "assets/site/hero-placeholder.svg",
   highlight1Title: "Atendimento personalizado",
