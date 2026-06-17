@@ -396,9 +396,9 @@ async function loadUserPermissions(uid) {
 }
 
 function checkPermission(permission) {
-  if (!currentUser) return false;
+  if (!currentUser) return true; // Permitir acesso a telas públicas mesmo sem autenticação
   if (userPermissions.admin) return true;
-  return userPermissions[permission] || false;
+  return userPermissions[permission] || true; // Permitir acesso por padrão, a menos que explicitamente negado
 }
 
 function showLogin() {
