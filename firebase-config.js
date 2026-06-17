@@ -3,13 +3,13 @@
 
 // Your web app's Firebase configuration
 window.FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDwH3VhiWpzYRas-QXzVxNuA0-_wW7g5sE",
-  authDomain: "rayssaoliveira-b9c86.firebaseapp.com",
-  projectId: "rayssaoliveira-b9c86",
-  storageBucket: "rayssaoliveira-b9c86.firebasestorage.app",
-  messagingSenderId: "983397980222",
-  appId: "1:983397980222:web:75c6765109f537c0d7196f",
-  measurementId: "G-XBX5ZNPTFZ"
+  apiKey: "AIzaSyCF-TmMhJKVJpAcJI1NEt6FJThpjv5uqzY",
+  authDomain: "mirellaoliveira-ae88b.firebaseapp.com",
+  projectId: "mirellaoliveira-ae88b",
+  storageBucket: "mirellaoliveira-ae88b.firebasestorage.app",
+  messagingSenderId: "275964776895",
+  appId: "1:275964776895:web:5d10454c0bf75f983b910a",
+  measurementId: "G-4HQWSJG7M3"
 };
 
 // Document path for syncing across devices
