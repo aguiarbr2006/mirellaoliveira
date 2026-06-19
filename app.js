@@ -6,7 +6,7 @@ const currency = new Intl.NumberFormat("pt-BR", {
 });
 
 const DEFAULT_SETTINGS = {
-  companyName: "Mirella Oliveira",
+  companyName: "Rayssa Oliveira",
   subtitle: "Nail designer",
   logoText: "R",
   logoImage: "",
@@ -396,9 +396,9 @@ async function loadUserPermissions(uid) {
 }
 
 function checkPermission(permission) {
-  if (!currentUser) return true; // Permitir acesso a telas públicas mesmo sem autenticação
+  if (!currentUser) return false;
   if (userPermissions.admin) return true;
-  return userPermissions[permission] || true; // Permitir acesso por padrão, a menos que explicitamente negado
+  return userPermissions[permission] || false;
 }
 
 function showLogin() {
@@ -3449,7 +3449,7 @@ function download(filename, content, type) {
 
 const DEFAULT_LANDING_CONTENT = {
   heroEyebrow: "Nail design, alongamento e cuidado",
-  heroTitle: "Mirella Oliveira",
+  heroTitle: "Rayssa Oliveira Nail Design",
   heroDescription: "Unhas feitas com acabamento delicado, planejamento do formato e orientacao de cuidados para manter o resultado bonito por mais tempo.",
   heroImage: "assets/site/hero-placeholder.svg",
   highlight1Title: "Atendimento personalizado",

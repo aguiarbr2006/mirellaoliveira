@@ -3,7 +3,7 @@
     "providers": {
       "emailPassword": true,
       "googleSignIn": {
-        "oAuthBrandDisplayName": "Mirella Oliveiran",
+        "oAuthBrandDisplayName": "Rayssa Oliveira Nail Design",
         "supportEmail": "aguiar-br@hotmail.com"
       }
     }
