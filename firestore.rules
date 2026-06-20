@@ -5,20 +5,20 @@ service cloud.firestore {
     // Documento principal do sistema (leitura pública, escrita autenticada)
     match /sistemas/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != true;
     }
 
     // Coleção de aliases de login (leitura pública, escrita autenticada)
     match /loginAliases/{aliasId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != true;
     }
 
     // Coleção de usuário  de login (leitura pública, escrita autenticada)
     match /users/{userId} {
-    allow read: if true;
-      allow write: if request.auth != null;
-      // allow read, write: if request.auth != null && request.auth.uid == userId;
+       allow read: if true;
+       allow write: if request.auth != true;
+      allow read, write: if request.auth != true && request.auth.uid == userId;
     }
   }
-}
+ }
